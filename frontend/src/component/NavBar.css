@@ -1,0 +1,188 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap');
+
+.navbar-container {
+  width: 100%;
+  max-width: 1200px;
+  height: 70px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 40px;
+  z-index: 50;
+
+  /* Liquid Glass Effect */
+  background: rgba(15, 20, 35, 0.4);
+  backdrop-filter: blur(16px) saturate(200%);
+  -webkit-backdrop-filter: blur(16px) saturate(200%);
+  border: 1px solid rgba(0, 255, 225, 0.2);
+  border-bottom: 2px solid rgba(0, 255, 225, 0.5); /* Glowing edge */
+  border-radius: 40px;
+  box-shadow: 0 8px 32px 0 rgba(0, 10, 20, 0.6),
+              inset 0 0 15px rgba(0, 255, 225, 0.1);
+  transition: all 0.4s ease;
+  pointer-events: auto;
+}
+
+.navbar-container:hover {
+  box-shadow: 0 8px 32px 0 rgba(0, 255, 225, 0.15),
+              inset 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+.navbar-brand {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 3px;
+  cursor: pointer;
+  text-shadow: 0 0 8px rgba(0, 255, 225, 0.6),
+               0 0 20px rgba(0, 255, 225, 0.3);
+  transition: all 0.3s ease;
+}
+
+.navbar-brand:hover {
+  text-shadow: 0 0 15px rgba(0, 255, 225, 1),
+               0 0 30px rgba(0, 255, 225, 0.8),
+               0 0 50px rgba(0, 150, 255, 0.5);
+}
+
+.navbar-links {
+  display: flex;
+  list-style: none;
+  gap: 40px;
+  margin: 0;
+  padding: 0;
+}
+
+.navbar-links li a {
+  font-family: 'Rajdhani', sans-serif;
+  color: rgba(255, 255, 255, 0.75);
+  text-decoration: none;
+  font-size: 1.15rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  transition: all 0.3s ease;
+  position: relative;
+  display: inline-block;
+  padding-bottom: 5px;
+}
+
+.navbar-links li a::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0%;
+  height: 2px;
+  background: #00ffe1;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 10px #00ffe1;
+}
+
+.navbar-links li a:hover {
+  color: #ffffff;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
+}
+
+.navbar-links li a:hover::before {
+  width: 100%;
+}
+
+.navbar-actions .btn-futuristic {
+  font-family: 'Rajdhani', sans-serif;
+  background: linear-gradient(135deg, rgba(0, 255, 225, 0.1), rgba(0, 102, 255, 0.1));
+  color: #fff;
+  border: 1px solid rgba(0, 255, 225, 0.6);
+  padding: 8px 25px;
+  border-radius: 20px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  backdrop-filter: blur(5px);
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px rgba(0, 255, 225, 0.2);
+}
+
+.navbar-actions .btn-futuristic:hover {
+  background: linear-gradient(135deg, rgba(0, 255, 225, 0.3), rgba(0, 102, 255, 0.3));
+  border-color: #00ffe1;
+  color: #fff;
+  box-shadow: 0 0 15px rgba(0, 255, 225, 0.5),
+              0 0 30px rgba(0, 102, 255, 0.4);
+  transform: translateY(-2px);
+}
+
+/* Settings Dropdown */
+.settings-dropdown {
+  position: absolute;
+  top: 35px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 220px;
+  background: rgba(15, 20, 35, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 255, 225, 0.3);
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 8px 32px 0 rgba(0, 10, 20, 0.6), inset 0 0 10px rgba(0, 255, 225, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  z-index: 10000;
+  animation: slideDown 0.3s ease forwards;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translate(-50%, -10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+
+.settings-section span {
+  font-family: 'Rajdhani', sans-serif;
+  color: #fff;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.settings-section input[type="range"] {
+  width: 100%;
+  accent-color: #00ffe1;
+  background: rgba(255, 255, 255, 0.1);
+  height: 6px;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+
+.settings-section input[type="color"] {
+  width: 100%;
+  height: 35px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.save-btn {
+  border-color: #ff0055 !important;
+  box-shadow: 0 0 15px rgba(255, 0, 85, 0.4) !important;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 10px rgba(255, 0, 85, 0.4); }
+  50% { box-shadow: 0 0 20px rgba(255, 0, 85, 0.8); }
+  100% { box-shadow: 0 0 10px rgba(255, 0, 85, 0.4); }
+}

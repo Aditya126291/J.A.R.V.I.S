@@ -1,0 +1,258 @@
+{
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\diagnostics.js": {
+    "mtime": 1779007466.792366,
+    "hash": "20eb818e35560f18dd07b68d5ee29dc2"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\do_uia_close.ps1": {
+    "mtime": 1777386624.013337,
+    "hash": "b1f5e3b69a5736984435b000637a442b"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\dump_tabs.ps1": {
+    "mtime": 1777386555.5711243,
+    "hash": "f1c1ae168cdbc7447ae15da9c6ce6a0f"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\dump_titles.ps1": {
+    "mtime": 1777386110.1676333,
+    "hash": "97a611c1b32b5ca4cff5c667c777cf92"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\list_bidi_models.js": {
+    "mtime": 1779007074.5083637,
+    "hash": "78eba0c3c24f6945c1b320c77b7e3955"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\scan_ble.ps1": {
+    "mtime": 1777388543.585513,
+    "hash": "de24d17c8a7293bd10aa897d9fd61cea"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\scan_devices.ps1": {
+    "mtime": 1777389897.6371388,
+    "hash": "4430ff19e18aaa3aabdc2fed944f1401"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\scratch_test_gemini.js": {
+    "mtime": 1779006506.8008306,
+    "hash": "1eef96e76fcb39e1247d42e687c2f7fa"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\scratch_test_live_ws.js": {
+    "mtime": 1779006749.8814552,
+    "hash": "2d5ec5b3b163d21f8d2c73db1e32c395"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\server.js": {
+    "mtime": 1778828392.1809032,
+    "hash": "6ee75bb334ef77f78f96cedbde2eeb92"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\tester_agent.js": {
+    "mtime": 1778775057.608849,
+    "hash": "61196063429a506d8e346344dcfaa044"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\test_all_live_ws.js": {
+    "mtime": 1779007028.5858011,
+    "hash": "482f75d86bf27a21d1bc4bac70729a53"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\test_arp.ps1": {
+    "mtime": 1777389093.3993576,
+    "hash": "2ec2c6a48417f883c0a40a80b87306e8"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\test_ble.ps1": {
+    "mtime": 1777388496.4583817,
+    "hash": "db24ecd14a23df0dcea885f74326f130"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\test_ble_scan.ps1": {
+    "mtime": 1777391127.0101366,
+    "hash": "78bfd061ac5bf30e7a8ecab2c073d1ee"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\test_close.ps1": {
+    "mtime": 1777385743.9163136,
+    "hash": "fa1533058892fc2431a2d6723fe33b17"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\test_cycle_close.ps1": {
+    "mtime": 1777387049.6732807,
+    "hash": "1c93ea0e6648bfb2f5128151bb434c61"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\test_live_ble.ps1": {
+    "mtime": 1777389158.031455,
+    "hash": "fdd35ef28a475aaf357067ac3f128bc7"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\test_native_audio_ws.js": {
+    "mtime": 1779007141.0444155,
+    "hash": "6504cbba597c192f7b407f8f5a9b2115"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\test_pnp.ps1": {
+    "mtime": 1777389775.4064803,
+    "hash": "02957fca0ba361326117959a74c63c3d"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\test_robust_close.ps1": {
+    "mtime": 1777387143.6115272,
+    "hash": "022933311d99276394a625dc57d7d732"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\test_scanner.js": {
+    "mtime": 1777389201.5108318,
+    "hash": "3ea2a5f60eed51cf3f801a59489f8262"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\test_tab_close_btn.ps1": {
+    "mtime": 1777387108.451378,
+    "hash": "c9478dd2f43fa322c07321ce69710fea"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\test_tts_speed.js": {
+    "mtime": 1778481683.0849655,
+    "hash": "995c118bb560a0614e7b4cb6fadf333d"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\test_uia_close.ps1": {
+    "mtime": 1777386588.6726654,
+    "hash": "23b3d48829df85a6a71c53147706ef0a"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\uia_close.ps1": {
+    "mtime": 1777386525.1976712,
+    "hash": "be85d525a21b1ec6f31fce378ca30c51"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\modules\\ai_router.js": {
+    "mtime": 1779015474.156629,
+    "hash": "e16a0d61dde445919a1cb198609fcc43"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\modules\\apps.js": {
+    "mtime": 1778775163.5449011,
+    "hash": "f5b65923b0ad63c7eb5bf3fbe9a06694"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\modules\\command_registry.js": {
+    "mtime": 1779014590.939123,
+    "hash": "9bd744b8c5803a625e19642c93ba82fb"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\modules\\config.js": {
+    "mtime": 1779008914.9746313,
+    "hash": "5b5b06fe1206b8f2ee1c017308fb9aaf"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\modules\\elevation.js": {
+    "mtime": 1778486340.0561697,
+    "hash": "e52b26f2b59e6a2038b0fdc185ae0f2d"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\modules\\files.js": {
+    "mtime": 1778774175.3652782,
+    "hash": "367915c3e2855c85efd24d103eb7dc03"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\modules\\gemini_health.js": {
+    "mtime": 1779009106.8907065,
+    "hash": "b53dbc41fb7ac0589e33884ee5f691ec"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\modules\\media.js": {
+    "mtime": 1778484945.1332884,
+    "hash": "af8ddab049a8b9246a8062bba24b0579"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\modules\\message.js": {
+    "mtime": 1778774260.3065517,
+    "hash": "834686cea85707ee9181f0737eed53c8"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\modules\\network.js": {
+    "mtime": 1778774196.2103765,
+    "hash": "ba602b266bf3f3ccc34f9f8fcb0c4c1d"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\modules\\power.js": {
+    "mtime": 1778484933.539635,
+    "hash": "b23adc58897c683cea5b403efe66f5b2"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\modules\\productivity.js": {
+    "mtime": 1778774202.981697,
+    "hash": "e7885adc9dd36d560ebf77c1e4db37da"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\modules\\system.js": {
+    "mtime": 1779014590.9630027,
+    "hash": "9f49dfb545da239e2f379dbfc0a4da14"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\modules\\telemetry.js": {
+    "mtime": 1778774270.982509,
+    "hash": "f172eb9fac2310d2596bf8d6d1a36b0b"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\modules\\utils.js": {
+    "mtime": 1778773856.6326458,
+    "hash": "daf6c9c7a6ae7048e2427c858db33a7f"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\modules\\workspace.js": {
+    "mtime": 1778485527.0128703,
+    "hash": "b6295e946787fb5343a4b2f30d969f72"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\frontend\\src\\api.js": {
+    "mtime": 1778774425.865263,
+    "hash": "597d31dc98a29e6f536e99bab58f8fa6"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\frontend\\src\\App.js": {
+    "mtime": 1778828392.1829948,
+    "hash": "3eceb4723cc2655c8698948dbb6be10e"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\frontend\\src\\App.test.js": {
+    "mtime": 1776172748.2766693,
+    "hash": "d18ac434afb00158b91831ac1e36c491"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\frontend\\src\\index.js": {
+    "mtime": 1776172748.404622,
+    "hash": "de8d7d2b70f260537bba30e87a711959"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\frontend\\src\\reportWebVitals.js": {
+    "mtime": 1776172748.5183575,
+    "hash": "240e2381f826a9bb84d178b29b7b9abe"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\frontend\\src\\setupTests.js": {
+    "mtime": 1776172748.6168613,
+    "hash": "1a77571e1a8cf36018a41bcedf60db75"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\frontend\\src\\component\\blob.js": {
+    "mtime": 1778774908.5894494,
+    "hash": "1b94799d944c50d0c95f4681f777594c"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\frontend\\src\\component\\ConfirmDialog.js": {
+    "mtime": 1778774643.1881251,
+    "hash": "52d6f319b9d3ea5029fc3f3b254c9aa6"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\frontend\\src\\component\\CurrentMode.js": {
+    "mtime": 1778774837.1083896,
+    "hash": "3106b96991a9fe78a3f980335337074d"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\frontend\\src\\component\\HUDWidgets.js": {
+    "mtime": 1778774829.4200225,
+    "hash": "47df65c787daab8a4d33c8977b11cb25"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\frontend\\src\\component\\NavBar.js": {
+    "mtime": 1778774854.5481403,
+    "hash": "e0f93314c59e40e66aa6b1945302ff32"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\frontend\\src\\component\\SystemStatus.js": {
+    "mtime": 1778825615.3602054,
+    "hash": "1108e5831086dc7974be9158427d6c3d"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\frontend\\src\\component\\Terminal.js": {
+    "mtime": 1779016057.3213954,
+    "hash": "eae674b9b3141bf13ad9d92dac1c4e96"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\AGENTS.md": {
+    "mtime": 1778777376.3562903,
+    "hash": "22e263ebb43e933f6bc6423bf78e892f"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\backend\\titles.txt": {
+    "mtime": 1777386408.1997044,
+    "hash": "d22a5e2d5a0a6984c2d18930b17ec673"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\frontend\\README.md": {
+    "mtime": 1776172749.056222,
+    "hash": "33822368bfb3ad3de6fceb9cd76aa0dd"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\frontend\\public\\index.html": {
+    "mtime": 1776172747.708658,
+    "hash": "ef8a02db437c74f2ecb0d88becc4b9d4"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\frontend\\public\\robots.txt": {
+    "mtime": 1776172749.3733802,
+    "hash": "fa1ded1ed7c11438a9b0385b1e112850"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\frontend\\public\\logo192.png": {
+    "mtime": 1776172749.1521485,
+    "hash": "33dbdd0177549353eeeb785d02c294af"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\frontend\\public\\logo512.png": {
+    "mtime": 1776172749.2308617,
+    "hash": "917515db74ea8d1aee6a246cfbcc0b45"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\frontend\\src\\logo.svg": {
+    "mtime": 1776172749.304848,
+    "hash": "06e733283fa43d1dd57738cfc409adbd"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S\\frontend\\src\\images\\backgroundimage.png": {
+    "mtime": 1776174565.5024774,
+    "hash": "7b4388a384f4af31f9f8034c0418ddb3"
+  }
+}
