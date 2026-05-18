@@ -1,11 +1,10 @@
 const express = require('express');
 const cors = require('cors');
-const googleTTS = require('google-tts-api');
-const https = require('https');
 
 const config = require('./modules/config');
 const telemetry = require('./modules/telemetry');
 const aiRouter = require('./modules/ai_router');
+const tts = require('./modules/tts');
 const { runPowerShell } = require('./modules/utils');
 const { normalizePayload, requiresConfirmation, summarizeAction } = require('./modules/command_registry');
 const { handleAppCommand } = require('./modules/apps');
@@ -17,6 +16,7 @@ const { handleProductivityCommand } = require('./modules/productivity');
 const { handleNetworkCommand } = require('./modules/network');
 const { handleWorkspaceCommand } = require('./modules/workspace');
 const { handleMessageCommand } = require('./modules/message');
+const { handleWebCommand } = require('./modules/web');
 
 const app = express();
 const corsOptions = config.allowedOrigin === '*' ? {} : { origin: config.allowedOrigin };
@@ -24,64 +24,7 @@ const corsOptions = config.allowedOrigin === '*' ? {} : { origin: config.allowed
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '1mb' }));
 
-const ttsCache = new Map();
-const MAX_TTS_CACHE = 80;
-
-function rememberTts(key, buffer) {
-  if (ttsCache.size >= MAX_TTS_CACHE) {
-    const oldest = ttsCache.keys().next().value;
-    ttsCache.delete(oldest);
-  }
-  ttsCache.set(key, buffer);
-}
-
-function sendAudio(res, buffer) {
-  res.setHeader('Content-Type', 'audio/mpeg');
-  res.setHeader('Cache-Control', 'public, max-age=86400');
-  res.send(buffer);
-}
-
-app.get('/tts', async (req, res) => {
-  const { text, lang } = req.query;
-  const cleanText = String(text || '').trim().slice(0, 600);
-  if (!cleanText) return res.status(400).send('Text is required');
-
-  const ttsLang = lang && String(lang).includes('hi') ? 'en-IN' : 'en-GB';
-  const cacheKey = `${ttsLang}:${cleanText}`;
-  if (ttsCache.has(cacheKey)) return sendAudio(res, ttsCache.get(cacheKey));
-
-  try {
-    const url = googleTTS.getAudioUrl(cleanText, {
-      lang: ttsLang,
-      slow: false,
-      host: 'https://translate.google.com',
-    });
-
-    https
-      .get(url, (googleRes) => {
-        if (googleRes.statusCode && googleRes.statusCode >= 400) {
-          res.status(502).send('Synthesis failed');
-          googleRes.resume();
-          return;
-        }
-
-        const chunks = [];
-        googleRes.on('data', (chunk) => chunks.push(chunk));
-        googleRes.on('end', () => {
-          const buffer = Buffer.concat(chunks);
-          rememberTts(cacheKey, buffer);
-          sendAudio(res, buffer);
-        });
-      })
-      .on('error', (err) => {
-        console.error('TTS proxy error:', err);
-        res.status(500).send('Synthesis failed');
-      });
-  } catch (error) {
-    console.error('TTS generation error:', error);
-    res.status(500).send('Synthesis failed');
-  }
-});
+tts.registerTtsRoute(app);
 
 app.post('/api/chat', async (req, res) => {
   const { message } = req.body;
@@ -104,6 +47,62 @@ app.post('/api/chat', async (req, res) => {
       status: 'error',
       error: e.message,
     });
+  }
+});
+
+function sseSend(res, type, payload) {
+  if (res.writableEnded) return;
+  res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`);
+  if (typeof res.flush === 'function') res.flush();
+}
+
+app.get('/api/chat-stream', async (req, res) => {
+  const message = String(req.query.message || '').slice(0, 2000);
+  if (!message) {
+    res.status(400).end('message required');
+    return;
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+
+  // Heartbeat every 10s in case Express keeps things buffered
+  const heartbeat = setInterval(() => {
+    if (!res.writableEnded) res.write(': hb\n\n');
+  }, 10000);
+
+  let closed = false;
+  req.on('close', () => { closed = true; clearInterval(heartbeat); });
+
+  try {
+    if (typeof aiRouter.chatStream !== 'function') {
+      // Fallback to non-streaming chat behind SSE
+      const result = await aiRouter.chat(message);
+      sseSend(res, 'meta', { provider: result.provider, providerSwitch: result.providerSwitch || null });
+      sseSend(res, 'speech_delta', { text: result.speech || '' });
+      if (Array.isArray(result.actions) && result.actions.length) {
+        sseSend(res, 'action_ready', { actions: result.actions, needsConfirmation: !!result.needsConfirmation });
+      }
+      sseSend(res, 'done', { speech: result.speech, actions: result.actions || [], status: result.status, provider: result.provider });
+    } else {
+      // ai_router.chatStream uses a unified event callback `(event) => ...`
+      // where event = { type, data }. Forward each event straight through SSE.
+      await aiRouter.chatStream(message, (event) => {
+        if (closed || !event || !event.type) return;
+        sseSend(res, event.type, event.data || {});
+      });
+    }
+  } catch (e) {
+    console.error('[CHAT-STREAM ERROR]', e);
+    sseSend(res, 'error', { message: e.message || 'stream failed', code: e.code || 'INTERNAL' });
+  } finally {
+    clearInterval(heartbeat);
+    if (!res.writableEnded) {
+      try { res.end(); } catch (_) {}
+    }
   }
 });
 
@@ -131,16 +130,16 @@ async function executePayload(payload) {
   if (payload.module === 'network') return handleNetworkCommand(payload.action, payload.value);
   if (payload.module === 'workspace') return handleWorkspaceCommand(payload.action);
   if (payload.module === 'message') return handleMessageCommand(payload.action, payload.value);
+  if (payload.module === 'web') return handleWebCommand(payload.action, payload.value);
   return { success: false, error: 'Module not implemented' };
 }
 
 app.post('/api/execute', async (req, res) => {
-  const normalized = normalizePayload(req.body);
-  if (!normalized.ok) {
-    return res.status(400).json({ success: false, error: normalized.error });
+  const payload = normalizePayload(req.body);
+  if (!payload) {
+    return res.status(400).json({ success: false, error: 'Invalid or unsupported command payload.' });
   }
 
-  const payload = normalized.payload;
   const isRisky = requiresConfirmation(payload);
   if (isRisky && req.body.confirmed !== true) {
     return res.status(409).json({
@@ -183,6 +182,26 @@ Write-Output "NOT_FOUND"
 
 let globalRadarData = [];
 let isScanning = false;
+let radarSubscriberCount = 0;
+let radarLastSubscriberAt = 0;
+let radarTimer = null;
+
+const RADAR_INTERVAL_MS = 30000;
+const RADAR_IDLE_GRACE_MS = 60000; // keep scanning for 60s after last subscriber
+
+function execFileAsync(command, args, options = {}) {
+  return new Promise((resolve) => {
+    const child = require('child_process').execFile(
+      command,
+      args,
+      { windowsHide: true, timeout: 5000, ...options },
+      (error, stdout, stderr) => {
+        resolve({ error, stdout: stdout || '', stderr: stderr || '' });
+      }
+    );
+    child.on('error', () => { /* swallow ENOENT/spawn errors */ });
+  });
+}
 
 async function runRadarScan() {
   if (isScanning) return;
@@ -192,8 +211,9 @@ async function runRadarScan() {
   const laptopHint = /(?:-PC|Laptop|Desktop|Workstation|MacBook|Surface|ProBook|EliteBook)/i;
   const currentDevices = [];
 
+  // Wi-Fi via netsh — native binary, no PowerShell host startup.
   try {
-    const { stdout } = await runPowerShell('netsh wlan show networks mode=bssid');
+    const { stdout } = await execFileAsync('netsh', ['wlan', 'show', 'networks', 'mode=bssid']);
     if (stdout) {
       const blocks = stdout.split(/SSID \d+ :/g).slice(1);
       for (const block of blocks) {
@@ -219,6 +239,8 @@ async function runRadarScan() {
     }
   } catch (e) {}
 
+  // Bluetooth/PnP query — Get-PnpDevice has no native equivalent, so we
+  // still need PowerShell here. Kept inside the gated radar loop only.
   try {
     const btScript = `
 $devs = @()
@@ -243,8 +265,9 @@ $devs | ConvertTo-Json
     }
   } catch (e) {}
 
+  // ARP via the native binary, no shell.
   try {
-    const { stdout } = await runPowerShell('arp -a');
+    const { stdout } = await execFileAsync('arp', ['-a']);
     if (stdout) {
       const lines = stdout.split('\n');
       for (const line of lines) {
@@ -262,7 +285,33 @@ $devs | ConvertTo-Json
   isScanning = false;
 }
 
+function ensureRadarLoop() {
+  if (radarTimer) return;
+  radarTimer = setInterval(() => {
+    const idle = Date.now() - radarLastSubscriberAt;
+    if (radarSubscriberCount === 0 && idle > RADAR_IDLE_GRACE_MS) {
+      clearInterval(radarTimer);
+      radarTimer = null;
+      return;
+    }
+    runRadarScan();
+  }, RADAR_INTERVAL_MS);
+}
+
+function noteRadarSubscriber() {
+  radarSubscriberCount = 1; // single-client model; bump if multi-tenant
+  radarLastSubscriberAt = Date.now();
+  ensureRadarLoop();
+}
+
 app.get('/api/radar', (req, res) => {
+  // Each fetch counts as a live subscriber heartbeat. Loop pauses ~60s
+  // after the HUD stops polling.
+  noteRadarSubscriber();
+  // Trigger a scan if data is stale (cold-start / just-resumed loop).
+  if (globalRadarData.length === 0 && !isScanning) {
+    runRadarScan();
+  }
   res.json({ success: true, devices: globalRadarData });
 });
 
@@ -282,13 +331,10 @@ app.get('/system', async (req, res) => {
 
   if (!payload) return res.json({ success: false, error: 'Unknown system command' });
   const normalized = normalizePayload(payload);
-  if (!normalized.ok) return res.json({ success: false, error: normalized.error });
-  const result = await executePayload(normalized.payload);
+  if (!normalized) return res.json({ success: false, error: 'Invalid system command payload.' });
+  const result = await executePayload(normalized);
   res.json({ ...result, target });
 });
-
-setInterval(runRadarScan, 15000);
-runRadarScan();
 
 app.listen(config.port, () => {
   console.log(`J.A.R.V.I.S backend online on port ${config.port}`);
@@ -296,6 +342,7 @@ app.listen(config.port, () => {
 });
 
 process.on('SIGTERM', () => {
+  if (radarTimer) { clearInterval(radarTimer); radarTimer = null; }
   aiRouter.stopHealthMonitor();
   process.exit(0);
 });

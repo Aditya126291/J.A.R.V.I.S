@@ -156,6 +156,7 @@ const VALID_ACTIONS = {
     'create_folder',
     'create_file',
     'delete',
+    'format',
     'sort_downloads',
     'empty_recycle_bin',
   ]),
@@ -163,17 +164,24 @@ const VALID_ACTIONS = {
   network: new Set(['ping', 'wifi_enable', 'wifi_disable']),
   workspace: new Set(['focus_mode', 'coding_mode']),
   message: new Set(['send']),
+  // Live-data tools (keyless). All non-risky: read-only fetches, no
+  // destructive side effects, no confirmation gate.
+  web: new Set(['search', 'fetch', 'weather', 'wiki', 'time', 'crypto', 'news']),
 };
 
+// Closed Risky_Action_Set per design.md / requirements.md (Glossary).
+// `requiresConfirmation(payload)` returns true iff `module:action` is in this
+// set. The set is closed: any addition or removal must be matched by the
+// corresponding update in design.md, requirements.md (Glossary), and the
+// Risky_Action_Set test fixtures. The predicate is intentionally decoupled
+// from `VALID_ACTIONS` so the gate stays correct even if the action whitelist
+// drifts (Requirement 6.6).
 const RISKY_ACTIONS = new Set([
-  'power:sleep',
-  'power:restart',
   'power:shutdown',
-  'network:wifi_enable',
-  'network:wifi_disable',
+  'power:restart',
   'files:delete',
-  'files:empty_recycle_bin',
-  'files:sort_downloads',
+  'files:format',
+  'network:wifi_disable',
   'message:send',
 ]);
 
@@ -204,8 +212,14 @@ function isSafeDesktopName(value) {
   if (typeof value !== 'string') return false;
   const trimmed = value.trim();
   if (!trimmed || trimmed.length > 120) return false;
+  // Reject null bytes (filesystem boundary attacks).
+  if (trimmed.includes('\0')) return false;
+  // Reject path traversal markers and any segment separators / drive markers.
   if (trimmed.includes('..')) return false;
   if (/[\\/:*?"<>|]/.test(trimmed)) return false;
+  // Reject Windows reserved device names (CON, PRN, AUX, NUL, COM1..9, LPT1..9).
+  if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i.test(trimmed)) return false;
+  // After all the rejections above, the value must be a single basename.
   return path.basename(trimmed) === trimmed;
 }
 
@@ -220,6 +234,16 @@ function safeDesktopPath(name) {
     throw new Error('File action must stay inside the Desktop folder.');
   }
   return resolved;
+}
+
+// Non-throwing variant used by `normalizePayload` to satisfy Requirement 6.5
+// (no exceptions for any input).
+function trySafeDesktopPath(name) {
+  try {
+    return safeDesktopPath(name);
+  } catch (e) {
+    return null;
+  }
 }
 
 function isSafeUrlLike(value) {
@@ -270,82 +294,215 @@ function summarizeAction(payload) {
   if (payload.module === 'message' && isPlainObject(value)) {
     return `send ${value.app || 'message'} message to ${value.contact || 'contact'}`;
   }
-  if (payload.module === 'files') return `${payload.action.replace(/_/g, ' ')}${value ? ` ${value}` : ''}`;
+  if (payload.module === 'web') {
+    if (payload.action === 'weather') return `look up the weather in ${value || 'a location'}`;
+    if (payload.action === 'wiki')    return `look up '${value}' on Wikipedia`;
+    if (payload.action === 'time')    return `look up the time in ${value || 'a location'}`;
+    if (payload.action === 'crypto')  return `look up the price of ${value}`;
+    if (payload.action === 'news')    return `look up the latest news about ${value}`;
+    if (payload.action === 'search')  return `search the web for '${value}'`;
+    if (payload.action === 'fetch')   return `read the page at ${value}`;
+    return `web ${payload.action}`;
+  }
+  if (payload.module === 'files') {
+    // `files:format` is in the closed Risky_Action_Set (Glossary in
+    // requirements.md). normalizePayload currently strips its `value` and
+    // `target` (the action does not yet have a sandboxed schema), so the
+    // generic branch below would emit a bare "format" with no object. Give
+    // the confirmation modal a clean human description regardless of which
+    // field carried the format target on the raw payload.
+    if (payload.action === 'format') {
+      const fmtTarget =
+        (typeof payload.target === 'string' && payload.target) ||
+        (typeof value === 'string' && value) ||
+        null;
+      return fmtTarget ? `format ${fmtTarget}` : 'format drive';
+    }
+    return `${payload.action.replace(/_/g, ' ')}${value ? ` ${value}` : ''}`;
+  }
   return `${payload.module} ${payload.action}`;
 }
 
-function normalizePayload(input) {
-  if (!isPlainObject(input)) {
-    return { ok: false, error: 'Payload must be an object.' };
+// Per design.md "Action validation pipeline":
+//   validateActions(actions: ActionPayload[]):
+//     { ok: NormalizedAction[], pending: PendingEntry[], rejected: RejectedEntry[] }
+//
+// Postconditions (Requirements 6.2, 6.7, 6.11):
+//   - The three output lists partition the input multiset: every input lands
+//     in exactly one of ok / pending / rejected, with no duplication and no
+//     loss (Requirement 6.11).
+//   - A normalized payload `n` for which `requiresConfirmation(n) === true`
+//     and `n.confirmed !== true` is placed in `pending` and is NOT placed in
+//     `ok` (Requirement 6.2).
+//   - Each `pending` entry carries an `id` (`${index}-${module}-${action}`),
+//     the normalized `payload`, and a `summary` from `summarizeAction` so the
+//     frontend modal can render and correlate confirmations (Requirement 6.7).
+//   - Each `rejected` entry carries the original input `payload` and a short
+//     `reason` string (`unknown_module` when the module is missing or not in
+//     VALID_ACTIONS, `invalid_payload` otherwise) so callers can surface a
+//     useful diagnostic without re-running schema checks.
+function validateActions(actions) {
+  const ok = [];
+  const pending = [];
+  const rejected = [];
+
+  if (!Array.isArray(actions)) {
+    return { ok, pending, rejected };
   }
 
-  const moduleName = normalizeSimpleText(input.module, 40).toLowerCase();
-  const action = normalizeSimpleText(input.action, 60).toLowerCase();
-  if (!VALID_ACTIONS[moduleName] || !VALID_ACTIONS[moduleName].has(action)) {
-    return { ok: false, error: `Unsupported command: ${moduleName}.${action}` };
-  }
-
-  let value = input.value ?? null;
-
-  if (moduleName === 'apps') {
-    if (action === 'automate') {
-      if (!isPlainObject(value) || !normalizeSimpleText(value.app, 80) || !Array.isArray(value.sequence)) {
-        return { ok: false, error: 'Invalid app automation payload.' };
+  actions.forEach((rawPayload, index) => {
+    const normalized = normalizePayload(rawPayload);
+    if (normalized === null) {
+      // Distinguish the "module isn't in our vocabulary" case from any other
+      // schema failure so the frontend can render a clearer error. We mirror
+      // the same lowercase / trim normalization normalizePayload uses so the
+      // detection lines up with the actual rejection rule.
+      let reason = 'invalid_payload';
+      if (isPlainObject(rawPayload)) {
+        const moduleName = normalizeSimpleText(rawPayload.module, 40).toLowerCase();
+        if (!moduleName || !VALID_ACTIONS[moduleName]) {
+          reason = 'unknown_module';
+        }
       }
-      value = {
-        app: normalizeSimpleText(value.app, 80),
-        sequence: value.sequence.slice(0, 20).map((step) => normalizeSimpleText(String(step), 300)),
-      };
-    } else {
-      value = normalizeSimpleText(value, 160).toLowerCase();
-      if (!value) return { ok: false, error: 'App target required.' };
+      rejected.push({ payload: rawPayload, reason });
+      return;
     }
-  } else if (moduleName === 'system') {
-    if (action === 'volume_set' || action === 'brightness_set') {
-      value = clampNumber(value, 0, 100);
-      if (value === null) return { ok: false, error: 'Value must be a number from 0 to 100.' };
-    } else if (action === 'brightness_adjust') {
-      value = clampNumber(value, -100, 100);
-      if (value === null || value === 0) return { ok: false, error: 'Brightness adjustment must be a non-zero number.' };
-    } else {
-      value = null;
-    }
-  } else if (moduleName === 'power' || moduleName === 'media' || moduleName === 'workspace') {
-    value = null;
-  } else if (moduleName === 'network') {
-    if (action === 'ping') {
-      value = normalizeSimpleText(value || 'google.com', 253);
-      if (!isSafeHost(value)) return { ok: false, error: 'Ping target must be a valid host name.' };
-    } else {
-      value = null;
-    }
-  } else if (moduleName === 'files') {
-    if (action === 'create_folder' || action === 'create_file' || action === 'delete') {
-      value = normalizeSimpleText(value, 120);
-      if (!isSafeDesktopName(value)) return { ok: false, error: 'Use a simple Desktop file or folder name.' };
-    } else {
-      value = null;
-    }
-  } else if (moduleName === 'productivity') {
-    value = normalizeSimpleText(value, 1000);
-    if (!value) return { ok: false, error: 'Note content required.' };
-  } else if (moduleName === 'message') {
-    if (!isPlainObject(value)) return { ok: false, error: 'Message payload must be an object.' };
-    value = {
-      app: normalizeSimpleText(value.app, 40).toLowerCase(),
-      contact: normalizeSimpleText(value.contact, 120),
-      message: normalizeSimpleText(value.message, 1000),
-    };
-    if (!['whatsapp', 'telegram'].includes(value.app)) {
-      return { ok: false, error: 'Messaging supports WhatsApp and Telegram only.' };
-    }
-    if (!value.contact || !value.message) {
-      return { ok: false, error: 'Message contact and text are required.' };
-    }
-  }
 
-  const payload = { module: moduleName, action, value };
-  return { ok: true, payload, requiresConfirmation: requiresConfirmation(payload) };
+    // Risky payloads without `confirmed === true` short-circuit to `pending`.
+    // This is the gate that produces the HTTP 409 / requiresConfirmation
+    // event (Requirement 6.7); the frontend re-issues the same payload with
+    // `confirmed: true` to move it into `ok` on the next call.
+    if (requiresConfirmation(normalized) && normalized.confirmed !== true) {
+      pending.push({
+        id: `${index}-${normalized.module}-${normalized.action}`,
+        payload: normalized,
+        summary: summarizeAction(normalized),
+      });
+      return;
+    }
+
+    ok.push(normalized);
+  });
+
+  return { ok, pending, rejected };
+}
+
+// Per design.md "Command Registry / Validator":
+//   normalizePayload(input: unknown): NormalizedAction | null
+//
+// Postconditions (Requirements 6.1, 6.3, 6.4, 6.5):
+//   - Returns `null` (never throws) for any input that fails schema validation.
+//   - For `module ∈ {system, media}` with numeric `value`: 0 <= result.value <= 100.
+//   - For `module === "files"` with a `target`: result.target is an absolute
+//     path under Desktop_Root, or `null` if the name is not a safe basename.
+//   - Rejects path traversal (`..`, `/`, `\`), absolute paths, null bytes,
+//     and any path that resolves outside Desktop_Root.
+function normalizePayload(input) {
+  try {
+    if (!isPlainObject(input)) return null;
+
+    const moduleName = normalizeSimpleText(input.module, 40).toLowerCase();
+    const action = normalizeSimpleText(input.action, 60).toLowerCase();
+    if (!VALID_ACTIONS[moduleName] || !VALID_ACTIONS[moduleName].has(action)) {
+      return null;
+    }
+
+    let value = input.value ?? null;
+    let target = input.target ?? null;
+    const confirmed = input.confirmed === true;
+
+    if (moduleName === 'apps') {
+      if (action === 'automate') {
+        if (!isPlainObject(value) || !normalizeSimpleText(value.app, 80) || !Array.isArray(value.sequence)) {
+          return null;
+        }
+        value = {
+          app: normalizeSimpleText(value.app, 80),
+          sequence: value.sequence.slice(0, 20).map((step) => normalizeSimpleText(String(step), 300)),
+        };
+      } else {
+        value = normalizeSimpleText(value, 160).toLowerCase();
+        if (!value) return null;
+      }
+    } else if (moduleName === 'system') {
+      if (action === 'volume_set' || action === 'brightness_set') {
+        // Requirement 6.1: clamp numeric value to [0, 100].
+        value = clampNumber(value, 0, 100);
+        if (value === null) return null;
+      } else if (action === 'brightness_adjust') {
+        // Adjust deltas may be negative, but the absolute magnitude is bounded
+        // by the same [0, 100] device range; the executor re-clamps the
+        // resulting brightness in `system.js`.
+        value = clampNumber(value, -100, 100);
+        if (value === null || value === 0) return null;
+      } else {
+        value = null;
+      }
+    } else if (moduleName === 'media') {
+      // No media action currently carries a numeric `value`, but if one ever
+      // does, Requirement 6.1 mandates the [0, 100] clamp.
+      if (typeof value === 'number' || (typeof value === 'string' && value.trim() !== '')) {
+        const clamped = clampNumber(value, 0, 100);
+        value = clamped; // null is acceptable here -- media actions ignore value
+      } else {
+        value = null;
+      }
+    } else if (moduleName === 'power' || moduleName === 'workspace') {
+      value = null;
+    } else if (moduleName === 'network') {
+      if (action === 'ping') {
+        value = normalizeSimpleText(value || 'google.com', 253);
+        if (!isSafeHost(value)) return null;
+      } else {
+        value = null;
+      }
+    } else if (moduleName === 'files') {
+      if (action === 'create_folder' || action === 'create_file' || action === 'delete') {
+        // The `target` is the path-like field per design.md. Callers that
+        // still send the name in `value` are accepted for backward compat.
+        const rawName = target != null ? target : value;
+        const candidate = normalizeSimpleText(rawName, 120);
+        // Requirement 6.4: reject `..`, `/`, `\`, absolute paths, null bytes.
+        if (!isSafeDesktopName(candidate)) return null;
+        const resolved = trySafeDesktopPath(candidate);
+        if (!resolved) return null;
+        value = candidate; // keep the raw name in `value` for legacy callers
+        target = resolved; // sandboxed absolute path under Desktop_Root
+      } else {
+        value = null;
+        target = null;
+      }
+    } else if (moduleName === 'productivity') {
+      value = normalizeSimpleText(value, 1000);
+      if (!value) return null;
+    } else if (moduleName === 'web') {
+      // All web tools accept a single free-form string argument: a query,
+      // location name, symbol, topic, or URL. We trim/cap aggressively so a
+      // malformed model emission can't blow up the upstream HTTP call.
+      // - search/wiki/news/weather/time/crypto: 200-char query cap
+      // - fetch: must look like a URL (http(s)://...) and is capped at 600
+      const cap = action === 'fetch' ? 600 : 200;
+      value = normalizeSimpleText(value, cap);
+      if (!value) return null;
+      if (action === 'fetch' && !/^https?:\/\//i.test(value)) return null;
+    } else if (moduleName === 'message') {
+      if (!isPlainObject(value)) return null;
+      value = {
+        app: normalizeSimpleText(value.app, 40).toLowerCase(),
+        contact: normalizeSimpleText(value.contact, 120),
+        message: normalizeSimpleText(value.message, 1000),
+      };
+      if (!['whatsapp', 'telegram'].includes(value.app)) return null;
+      if (!value.contact || !value.message) return null;
+    }
+    const payload = { module: moduleName, action, value };
+    if (target !== null) payload.target = target;
+    if (confirmed) payload.confirmed = true;
+    return payload;
+  } catch (e) {
+    // Requirement 6.5: never throw, regardless of input shape.
+    return null;
+  }
 }
 
 module.exports = {
@@ -368,4 +525,5 @@ module.exports = {
   safeDesktopPath,
   requiresConfirmation,
   summarizeAction,
+  validateActions,
 };

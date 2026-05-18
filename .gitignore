@@ -28,3 +28,6 @@ yarn-error.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local TTS cache (rendered MP3 buffers, hash-keyed, regenerable)
+backend/cache/

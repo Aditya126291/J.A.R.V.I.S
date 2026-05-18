@@ -6,6 +6,8 @@ import Terminal from './component/Terminal';
 import SystemStatus from './component/SystemStatus';
 import HUDWidgets from './component/HUDWidgets';
 import CurrentMode from './component/CurrentMode';
+import ConfirmationModal from './component/ConfirmationModal';
+import { useConfirmationGate } from './hooks/useConfirmationGate';
 
 function App() {
   const [blobConfig, setBlobConfig] = useState({
@@ -16,6 +18,20 @@ function App() {
     position: { x: window.innerWidth / 2, y: window.innerHeight / 2 }, 
     isDraggingMode: false
   });
+
+  // Confirmation gate: owns the pending-confirmation state for risky actions
+  // and produces the onConfirm/onCancel callbacks ConfirmationModal needs.
+  //
+  // TODO(15.1): wire `wsClient.send` into the hook's `send` option once the
+  // WsClient instance lives at this level, and forward `requiresConfirmation`
+  // events / HTTP 409 responses into `setPendingConfirmation`. The shape
+  // expected here is `{ turnId, originalMessage?, actions: [{ id, payload, summary }] }`.
+  const {
+    isOpen: isConfirmationOpen,
+    modalActions,
+    onConfirm: onConfirmActions,
+    onCancel: onCancelActions,
+  } = useConfirmationGate();
 
   return (
     <div className="App">
@@ -50,6 +66,16 @@ function App() {
 
       {/* Floating AI Blob (Absolute to screen) */}
       <AIVoiceBlob blobConfig={blobConfig} setBlobConfig={setBlobConfig} />
+
+      {/* Risky-action confirmation gate (Requirements 6.7 - 6.10).
+          The modal is rendered at the App level so it overlays the entire
+          HUD and is independent of Terminal's own legacy ConfirmDialog. */}
+      <ConfirmationModal
+        isOpen={isConfirmationOpen}
+        pendingActions={modalActions}
+        onConfirm={onConfirmActions}
+        onCancel={onCancelActions}
+      />
     </div>
   );
 }

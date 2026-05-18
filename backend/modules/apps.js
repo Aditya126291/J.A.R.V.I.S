@@ -128,15 +128,61 @@ async function handleAppCommand(action, target) {
     let psCode = `
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName Microsoft.VisualBasic
+Add-Type -Namespace Win32 -Name User32 -MemberDefinition @'
+[DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+[DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+'@
+
+$script:targetHwnd = [IntPtr]::Zero
+
+function Set-JarvisFocus {
+    param([int]$pid)
+    $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+    if (-not $proc) { return $false }
+    $w = New-Object -ComObject WScript.Shell
+    $w.AppActivate($pid) | Out-Null
+    Start-Sleep -Milliseconds 250
+    $script:targetHwnd = $proc.MainWindowHandle
+    return $true
+}
+
+function Test-JarvisFocus {
+    if ($script:targetHwnd -eq [IntPtr]::Zero) { return $false }
+    return ([Win32.User32]::GetForegroundWindow() -eq $script:targetHwnd)
+}
+
+function Send-JarvisKeys {
+    param([string]$keys)
+    if (-not (Test-JarvisFocus)) {
+        if ($script:targetHwnd -ne [IntPtr]::Zero) {
+            [Win32.User32]::SetForegroundWindow($script:targetHwnd) | Out-Null
+            Start-Sleep -Milliseconds 200
+        }
+        if (-not (Test-JarvisFocus)) {
+            Write-Output "FOCUS_LOST"
+            exit
+        }
+    }
+    [System.Windows.Forms.SendKeys]::SendWait($keys)
+}
+
+function Send-JarvisPaste {
+    param([string]$text)
+    Set-Clipboard -Value $text
+    Send-JarvisKeys "^v"
+}
 
 $appName = ${psQuote(app)}
 $procs = Get-Process | Where-Object { $_.MainWindowTitle -match [regex]::Escape($appName) -or $_.Name -match [regex]::Escape($appName) }
 if ($procs) {
-    $wshell = New-Object -ComObject WScript.Shell
-    $wshell.AppActivate($procs[0].Id)
+    if (-not (Set-JarvisFocus $procs[0].Id)) {
+        Write-Output "APP_NOT_FOUND"
+        exit
+    }
     Start-Sleep -Milliseconds 500
 } else {
     Write-Output "APP_NOT_FOUND"
+    exit
 }
 `;
 
@@ -145,11 +191,10 @@ if ($procs) {
         const match = step.match(/\{WAIT:(\d+)\}/);
         if (match) psCode += `Start-Sleep -Milliseconds ${Math.min(10000, Number(match[1]))}\n`;
       } else if (isSendKeyToken(step)) {
-        psCode += `[System.Windows.Forms.SendKeys]::SendWait(${psQuote(step)})\n`;
+        psCode += `Send-JarvisKeys ${psQuote(step)}\n`;
         psCode += `Start-Sleep -Milliseconds 120\n`;
       } else {
-        psCode += `Set-Clipboard -Value ${psQuote(step)}\n`;
-        psCode += `[System.Windows.Forms.SendKeys]::SendWait("^v")\n`;
+        psCode += `Send-JarvisPaste ${psQuote(step)}\n`;
         psCode += `Start-Sleep -Milliseconds 120\n`;
       }
     }
@@ -157,6 +202,12 @@ if ($procs) {
     psCode += 'Write-Output "SUCCESS"\n';
     const { stdout, error, stderr } = await runPowerShell(psCode);
     if (error) return { success: false, error: stderr || error.message };
+    if (stdout.includes('FOCUS_LOST')) {
+      return { success: false, error: 'Focus shifted away from the target app during automation. Try again without switching windows.' };
+    }
+    if (stdout.includes('APP_NOT_FOUND')) {
+      return { success: false, error: 'Target app window not found.' };
+    }
     if (stdout.includes('SUCCESS')) return { success: true };
     return { success: false, error: 'Automation did not complete.' };
   }
