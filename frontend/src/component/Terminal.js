@@ -879,6 +879,21 @@ const Terminal = ({ blobConfig = {} }) => {
       }
 
       for (const payload of payloads) {
+        // UI-only actions never round-trip to the backend executor — they
+        // exist purely to drive HUD widgets via the local event bus
+        // (useUiBus). The smart router emits them after a normal speech ack.
+        if (payload && payload.module === 'ui' && payload.action) {
+          try {
+            window.dispatchEvent(new CustomEvent('jarvis-ui', {
+              detail: { action: payload.action, value: payload.value },
+            }));
+            dispatchLog(`UI: ${payload.action}`, 'success');
+          } catch (e) {
+            dispatchLog(`UI dispatch failed: ${e.message}`, 'error');
+          }
+          continue;
+        }
+
         try {
           const data = await executeJarvisAction(payload, confirmed);
 

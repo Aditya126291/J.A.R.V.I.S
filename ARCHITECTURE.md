@@ -1,177 +1,342 @@
-# 🌌 J.A.R.V.I.S. — Systems Architecture & Engineering Blueprint
+# J.A.R.V.I.S. — Systems Architecture & Engineering Blueprint
 
-J.A.R.V.I.S. (Just A Rather Very Intelligent System) is a high-performance, real-time telemetry orchestration and autonomous client-system control center. It integrates a state-of-the-art React HUD telemetry frontend with a Node.js C# Interop and PowerShell backend, routed through a resilient, self-healing Google Gemini dynamic model execution pipeline.
+J.A.R.V.I.S. is a real-time, voice-driven desktop control center. It pairs
+a React holographic HUD with a Node.js backend that orchestrates a
+self-healing Gemini cascade, native Windows interop, keyless live-data
+tools, and a quota-aware fallback to local Ollama.
 
 ---
 
-## 🗺️ Global System Architecture & Data Flow
-
-Below is the schematic data flow showing how user voice/text commands route through the system, undergo XML reasoning parser extraction, validate against safety telemetry parameters, and trigger native C# Interops or UI Automation controls.
+## Top-level data flow
 
 ```mermaid
 graph TD
-    %% Frontend Components
-    subgraph Frontend [React Holographic HUD Dashboard]
-        V_IN[Voice Input / WebSpeech API] -->|Speech Transcript| TERM[Terminal.js Queue]
-        T_IN[Text Input Terminal] -->|User Text Prompt| TERM
-        TERM -->|API Request| API_C[api.js client]
-        BLOB[blob.js 3D Pulser] <-->|Pulse Volume Target| TERM
-        HW_WID[HUDWidgets.js Stats] <-->|Fetch metrics| API_C
-        NAV[NavBar.js Status] <-->|Display Ping & Mode| API_C
-        SYS_LOG[SystemStatus.js Diagnostic Console] <-->|Dynamic Logs Event Listener| TERM
+    subgraph Frontend [React HUD]
+        V_IN[Voice / WebSpeech] --> TERM[Terminal.js]
+        T_IN[Text Input] --> TERM
+        TERM -->|/api/chat-stream SSE| API_C[api.js]
+        BLOB[blob.js (SVG MCU)] <-->|simulatedBlobVolumeTarget| TERM
+        WIDGETS[SystemPulse, TimePomodoro, Weather,
+                NewsFeed, DevRail, NowPlaying,
+                GamePresence, RichPresence] <-->|REST| API_C
+        BUS[useUiBus jarvis-ui events] <-->|ui:* actions| TERM
+        MODE[useUIMode dev/gamer toggle] -->|data-ui-mode| WIDGETS
     end
 
-    %% Backend Server
-    subgraph Backend [Node.js REST & WS Server]
-        API_C -->|POST /api/chat| S_CHAT[server.js chat handler]
-        API_C -->|POST /api/execute| S_EXEC[server.js exec handler]
-        API_C -->|GET /tts| TTS_P[google-tts-api proxy]
-        API_C -->|GET /api/system-stats| TELEM[telemetry.js]
-        
-        %% AI Routing
-        S_CHAT -->|Prompt| AI_R[ai_router.js]
-        AI_R -->|1. Health checks & Ping| G_HLTH[gemini_health.js]
-        AI_R -->|2. Check Smart Routes| S_ROUTE[Smart Regex Router]
-        AI_R -->|3. Strict Prompts| SYS_PROMPT[Strict Delimiters Prompt]
-        
-        %% API Handlers
-        SYS_PROMPT -->|Call API| G_PRIMARY[Gemini Primary: WS / Live]
-        SYS_PROMPT -->|Failover REST Call| G_FALL[Gemini Fallback: REST]
-        SYS_PROMPT -->|Local Failover| OLLAMA[Ollama Local]
-        SYS_PROMPT -->|Offline Mode| EMERG[Emergency offline Router]
-        
-        %% Parsing & Validation
-        G_PRIMARY & G_FALL & OLLAMA -->|Raw XML Response| PARSE[XML Tag Delimited Parser]
-        PARSE -->|Thought Blocks| HIST[conversationHistory Memory]
-        PARSE -->|Speech Blocks| S_CHAT
-        PARSE -->|JSON Action Blocks| REGISTRY[command_registry.js Validator]
-        
-        %% Core Module Executors
-        S_EXEC -->|Validated Payload| REGISTRY
-        REGISTRY -->|System Volume/Brightness| MOD_SYS[system.js C# Interop]
-        REGISTRY -->|App Launches/Automation| MOD_APP[apps.js UI Automation]
-        REGISTRY -->|File Ops & Sorting| MOD_FILE[files.js Disk Handler]
-        REGISTRY -->|BLE/LAN Nodes| MOD_NET[network.js WLAN/ARP scan]
-        REGISTRY -->|Notes Storage| MOD_PROD[productivity.js]
-        REGISTRY -->|Workspace Sets| MOD_WORK[workspace.js]
-        REGISTRY -->|deep-link deep messenger| MOD_MSG[message.js WhatsApp/Telegram]
+    subgraph Backend [Node.js / Express]
+        API_C -->|/api/chat-stream| AI_R[ai_router.js]
+        API_C -->|/api/execute| EXEC[server.js executor]
+        API_C -->|/tts| TTS_P[tts.js dual-engine]
+        API_C -->|/api/system-stats| TELEM[telemetry.js]
+        API_C -->|/api/dev/*| DEV[dev_tools.js]
+        API_C -->|/api/game/*| GAME[game_tools.js]
+
+        AI_R -->|tryUiFastPath| UI[ui:* actions]
+        AI_R -->|tryWebFastPath| WEB[web.js keyless tools]
+        AI_R -->|smart router| SMART[regex action router]
+        AI_R -->|LLM cascade| CASCADE[Gemini Primary →
+                                       Gemini Fallback →
+                                       Ollama Local →
+                                       Emergency]
+        AI_R -->|gate every call| QUOTA[quota_meter.js]
+        AI_R -->|boot + 5min ping| HLTH[gemini_health.js]
+        HLTH -->|.kiro/gemini_health_cache.json| FS_HLTH[(disk)]
+        QUOTA -->|.kiro/quota.json| FS_QUOTA[(disk)]
+
+        WEB -->|HTTP keyless| EXT_WEB[Open-Meteo, Wikipedia,
+                                      CoinGecko, Google News RSS,
+                                      DuckDuckGo HTML]
+        EXEC --> REGISTRY[command_registry.js]
+        REGISTRY -->|module-scoped| MODULES[apps, system, power, media,
+                                             files, productivity, network,
+                                             workspace, message, web, ui]
     end
 
-    %% Operating System Levels
-    subgraph OS [Windows OS Interop Kernel]
-        MOD_SYS -->|Add-Type IMMDevice C# Compilation| WIN_AUD[Windows Core Audio Interface]
-        MOD_SYS -->|WmiMonitorBrightnessMethods| WIN_DISPLAY[WMI Monitor Screen Kernel]
-        MOD_SYS -->|Windows.Devices.Radios WinRT| WIN_RADIO[WinRT Bluetooth Adapter]
-        MOD_APP -->|AppActivate / WScript.Shell| WIN_PROC[WScript Foreground process activator]
-        MOD_APP -->|UIAutomationClient TabItem| WIN_BROWSER[Browser Descendants Close Engine]
-        MOD_FILE -->|Clear-RecycleBin| WIN_DISK[Filesystem shell & Recycle Bin]
-        MOD_NET -->|netsh wlan / arp -a / Get-PnpDevice| WIN_NIC[Network adapters & BLE antennas]
+    subgraph OS [Windows]
+        MODULES --> PSHELL[PowerShell + WinRT + WMI]
+        MODULES --> EXEC_NATIVE[execFile arp / netsh / taskkill]
+        DEV --> AG_FS[%APPDATA%\Antigravity\
+                       User\globalStorage\storage.json]
+        DEV --> AG_LAUNCH[antigravity.cmd]
+        GAME --> SMTC[Windows.Media.Control]
+        GAME --> WIN32[GetForegroundWindow / GetWindowRect]
+        GAME --> DISCORD[Discord IPC pipe]
     end
 ```
 
 ---
 
-## 🛠️ Deep Subsystems & Feature Implementations
+## Backend modules
 
-### 1. The Autonomous AI Router & Self-Healing Core (`ai_router.js`)
-The [ai_router.js](file:///c:/Users/Aditya%20Kumar/OneDrive/Desktop/J.A.R.V.I.S/backend/modules/ai_router.js) is the primary reasoning coordinator of J.A.R.V.I.S. It implements a multi-provider fallback hierarchy (`gemini_primary` ➔ `gemini_fallback` ➔ `ollama_local` ➔ `emergency`).
+### `ai_router.js` — orchestrator
+Single source of truth for every LLM and tool decision.
 
-* **Strict Delimiters Enforcements**:
-  The system instructions force the model to output its thinking process and action payloads inside XML-like tag containers:
-  * `<thought>`: The chain-of-thought scratchpad where J.A.R.V.I.S. analyzes command nuances.
-  * `<speak>`: The conversational response to be spoken by the TTS engine.
-  * `<action>`: An array of structured JSON commands to execute.
-* **Deep XML Interception Middleware**:
-  The router intercepts the raw API response and executes a strict parser:
-  * Uses regex `/`<speak[^>]*>([\s\S]*?)<\/speak>`/gi` to separate speech from thinking processes, completely filtering out internal monologues before they leak to the audio stream.
-  * Uses tag extraction loops to grab `<action>...</action>` blocks. If standard JSON parsing fails due to trailing commas or escape anomalies, the parser executes a robust candidate extraction parser `extractJsonCandidates(text)` to salvage active JSON fragments.
-* **Context Contamination Safeguards**:
-  * Pushes the **exact, raw, unmodified XML string** (containing `<thought>`, `<speak>`, and `<action>` tags) directly back into the `conversationHistory` array instead of stringifying the parsed JSON. This keeps the model's in-context memory completely uniform and prevents model hallucinations.
-  * Uses a sliding history window limited to **20 entries** (truncating older conversation turns) to stay well within the token context window.
+- **Provider cascade**: `gemini_primary` → `gemini_fallback` → `ollama_local`
+  → `emergency`. `getProviderList` reorders Ollama to the front when
+  `quotaMeter.allNearLimit(['gemini_primary','gemini_fallback'], 0.8)`
+  fires, so saturation routes to local inference instead of burning a
+  429.
+- **Smart router**: `tryUiFastPath` → `tryWebFastPath` → `tryNaturalRoute`
+  → SMART_ROUTES regex table. Anything that pattern-matches bypasses the
+  LLM entirely (sub-200ms, zero token cost).
+- **Streaming chat**: `chatStream(userMessage, onEvent)` emits a uniform
+  event stream — `meta`, `speech_delta`, `speech_end`, `action_ready`,
+  `done`, `error`. `streamGeminiSse` does true SSE for streamable Gemini
+  models; the Live WS branch buffers and fires once.
+- **Tool-result loop**: Gemini emits `web:search` → backend executes →
+  re-prompts the model with `[TOOL_RESULT]`. Capped at 1 hop, with a
+  soft cap that skips the re-prompt and uses `formatWebResult` directly
+  when the active provider is at ≥80% RPM (saves the second LLM call).
+- **History**: 20-entry sliding window of raw XML model output; user
+  turns stored verbatim.
+- **Boot init**: reads `.kiro/gemini_health_cache.json`. If a key
+  fingerprint + model pair was healthy within 24h, skip negotiation
+  entirely. Cache misses run a single `negotiateModel` walk and store
+  the result. Cuts restart-storm spend to zero.
+- **Health monitor**: 5-minute interval (was 30s), single `pingModel`
+  per provider (was a 5-candidate `negotiateModel` walk per tick). One
+  request per cycle, not five.
 
-### 2. Low-Overhead Health Diagnostics & Negotiation (`gemini_health.js`)
-A major bottleneck of fallback routing is waiting for a dead API call to timeout. [gemini_health.js](file:///c:/Users/Aditya%20Kumar/OneDrive/Desktop/J.A.R.V.I.S/backend/modules/gemini_health.js) bypasses this using asynchronous, lightweight pings:
-* **Token Counting Pings**:
-  For standard REST models, it pings the model's `:countTokens` endpoint with a single word payload (`"ping"`). This verifies key validity, HTTP authentication, and model availability in under **400ms** at **zero token generation cost**.
-* **WebSocket Handshake Validation**:
-  For Gemini Live models (`gemini-2.5-flash-native-audio-latest`), it establishes a quick WebSocket connection to `wss://generativelanguage.googleapis.com` and validates that a `setupComplete` frame is received.
-* **Algorithm-Driven Model Negotiation**:
-  If the preferred primary model fails its health check, the router runs a negotiation loop testing fallbacks (`gemini-2.5-flash`, `gemini-2.5-pro`, `gemini-3.1-flash-lite`) in sequence, immediately adapting the active routing destination.
+### `quota_meter.js` — sliding-window rate limiter awareness
+- Tracks request timestamps per provider with binary-search prune.
+- `record(id)` is called before every Gemini round-trip.
+- `wouldExceed(id, pct)` and `allNearLimit(ids, pct)` drive the
+  router's saturation-aware decisions.
+- Persists to `.kiro/quota.json` with coalesced 800ms writes so a
+  backend restart inside the rate-limit window doesn't reset the meter.
+- Default limits: primary 15 RPM / 1500 RPD, fallback 30 RPM / 1500 RPD,
+  Ollama unlimited. `setLimits()` is exposed for when billing is enabled.
 
-### 3. Command Security & Payload Registry (`command_registry.js`)
-All dynamic payloads produced by the AI models undergo strict validation through a centralized safety registry:
-* **Normalizer Clamps**:
-  * Brightness and volume inputs are clamped to `[0, 100]` to prevent hardware values out of range.
-  * Desktop actions are isolated strictly within the desktop directory using `safeDesktopPath(name)`. It checks `isSafeDesktopName(name)` and blocks path traversal keys (e.g., `..`, `\`, `/`), raising immediate access exceptions.
-* **Risky Action Determinator**:
-  Identifies dangerous commands (e.g., `power:shutdown`, `files:delete`, `network:wifi_disable`, `message:send`). If a risky payload is received, it blocks execution and returns a status `requiresConfirmation` (code `409` conflict), forcing the frontend to present a security prompt.
+### `gemini_health.js` — health probes
+- `pingModel(apiKey, model)` — single REST `:countTokens` call (sub-400ms).
+- `pingLiveModel(apiKey, model)` — WebSocket handshake to
+  `wss://generativelanguage.googleapis.com`, waits for `setupComplete`.
+- `negotiateModel` — only used at boot on cache miss / stale, not in the
+  monitor loop.
 
-### 4. Windows System & Hardware Interop Kernel (`system.js`, `media.js`, `power.js`)
-J.A.R.V.I.S. integrates deep control over Windows system configurations:
-* **Compiled C# Core Audio Interop**:
-  Instead of relying on unstable external binaries, [system.js](file:///c:/Users/Aditya%20Kumar/OneDrive/Desktop/J.A.R.V.I.S/backend/modules/system.js) compiles C# interfaces on-the-fly inside PowerShell:
-  * Uses `Add-Type -TypeDefinition` to declare COM interfaces for `IAudioEndpointVolume`, `IMMDevice`, and `IMMDeviceEnumerator`.
-  * Communicates directly with the Windows Multimedia Device (MMDevice) API via COM Activation.
-  * Executes scalar volume controls (`SetMasterVolumeLevelScalar(float, Guid)`) and master mute commands (`SetMute(bool, Guid)`) with microsecond accuracy.
-* **WMI Screen Brightness**:
-  Interacts with the Windows WMI repository class `WmiMonitorBrightnessMethods` to set or adjust screen levels dynamically by retrieving the current hardware brightness value and applying WmiMonitor adjustments.
-* **WinRT Radio Manager**:
-  Loads Windows Runtime (WinRT) Bluetooth modules dynamically in PowerShell. It queries all available system radios (`[Windows.Devices.Radios.Radio]::GetRadiosAsync()`), filters for Bluetooth radios, and toggles their adapter state (`[Windows.Devices.Radios.RadioState]::On/Off`).
+### `command_registry.js` — payload validator
+- `normalizePayload(input) → NormalizedAction | null`. Total: never
+  throws. Clamps system/media `value` to [0,100], sandboxes `files`
+  targets under Desktop_Root, rejects path traversal + null bytes +
+  Windows reserved device names.
+- `requiresConfirmation(payload)` — closed Risky_Action_Set:
+  `{power:shutdown, power:restart, files:delete, files:format,
+   network:wifi_disable, message:send}`.
+- `summarizeAction(payload)` — human-readable description used by both
+  the confirmation modal and the chat speech.
+- Action vocabulary now includes:
+  - `web` — `search, fetch, weather, wiki, time, crypto, news` (keyless)
+  - `ui` — `mode.dev, mode.gamer, mode.toggle, pomodoro.start/stop,
+    weather.set_location, weather.refresh, news.refresh,
+    news.set_topic, pulse.expand/collapse/toggle,
+    rail.git/project/build/launch, project.refresh`
 
-### 5. Advanced Application Orchestration & UI Automation (`apps.js`)
-J.A.R.V.I.S. executes highly sophisticated windows controls:
-* **UI Automation Browser Tab-Closer**:
-  If asked to close a specific website (like YouTube), [apps.js](file:///c:/Users/Aditya%20Kumar/OneDrive/Desktop/J.A.R.V.I.S/backend/modules/apps.js) initializes `UIAutomationClient` assembly:
-  1. Finds the Chrome/Edge top-level window via class name `Chrome_WidgetWin_1`.
-  2. Scans descendants for `TabItem` control types matching the target website title.
-  3. Locates the child "Close" button element within that specific tab shell.
-  4. Invokes the `InvokePattern` on the button to natively close the tab without terminating the browser process.
-* **Keyboard Automation Sequence Injector**:
-  Supports complex automation macros (e.g., opening VS Code and running terminal sequences). It activating windows via COM shell (`WScript.Shell`), copies sequences to the clipboard, and utilizes `SendKeys::SendWait("^v")` to inject keystrokes smoothly, supporting Wait delays (`{WAIT:ms}`) and functional tokens (`{ENTER}`, `{TAB}`).
+### `web.js` — keyless live-data tools
+Every tool is total, returns `{ ok, ... }` shape, and respects a 6s
+timeout + 32 KB body cap + 3000-char output clamp.
 
-### 6. Dynamic File Management & Housekeeping (`files.js`)
-* **Disk Folder Housekeeping**:
-  Creates, reads, and force-deletes files and folders safely inside the user's Desktop environment.
-* **Clear Recycle Bin**:
-  Executes native shell garbage collections (`Clear-RecycleBin -Force`) to clear disk space.
-* **Intelligent Downloads Organizer**:
-  Scans the Windows `Downloads` directory, reads the extensions of all children files, matches them against categorized categories (Images, Documents, Installers, Archives, Media), dynamically creates folders for these categories, and sweeps the files into their corresponding directories.
+| Tool | Source |
+|---|---|
+| `getWeather(loc)` | Open-Meteo + their geocoder |
+| `getWiki(query)` | Wikipedia REST `/page/summary` |
+| `getTime(loc)` | Open-Meteo geocoder + `Intl.DateTimeFormat` (no API call) |
+| `getCrypto(symbol)` | CoinGecko `/simple/price` |
+| `getNews(topic)` | Google News RSS (regex parse) |
+| `searchWeb(query)` | DuckDuckGo HTML scrape |
+| `fetchUrl(url)` | `https.get` + minimal HTML→text extractor |
 
-### 7. WLAN Radar, BLE Node Detection & Network Sweep (`network.js`, `server.js`)
-The J.A.R.V.I.S. dashboard features an active network telemetry sweeps panel:
-* **WLAN Distance Sweeper**:
-  Parses `netsh wlan show networks mode=bssid`. Extracts surrounding SSID names and signals percentages. Implements a signal-to-distance algorithm: `distance = Math.round(((100 - signal) / 4) * 10) / 10`. It projects dynamic distance maps of local Wi-Fi radios.
-* **BLE Device Antennas Detector**:
-  Uses `Get-PnpDevice` to discover local active PNP Audio Endpoint devices or Bluetooth radios, filtering out internal audio controllers.
-* **Local LAN Nodes Scraper**:
-  Queries the OS local ARP table (`arp -a`) via PowerShell, scraping dynamic network nodes inside the LAN subnet, resolving device structures.
+`formatWebResult(action, result)` produces conversational sentences for
+the smart-router fast-path and the saturated-LLM tool-result fallback.
+
+### `dev_tools.js` — workspace + Antigravity inspectors
+- `getGitGlance(root)` — branch, dirty count + breakdown, ahead/behind,
+  last commit. Uses `execFile` with 5s timeout.
+- `getProjectInfo(root)` — reads `package.json` for workspace root,
+  `frontend/`, `backend/`. Detects React / Express / Next / etc.
+- `getBuildFeed(root)` — file-backed JSONL log at
+  `<root>/.kiro/build-feed.log`, capped at 50 entries.
+- `recordBuildEvent(root, event)` — append-only writer for build runs.
+- `getAntigravityWorkspaces({ limit })` — reads
+  `%APPDATA%\Antigravity\User\globalStorage\storage.json`,
+  decodes the `file:///c%3A/...` URIs to native Windows paths, checks
+  each one for existence.
+- `openInAntigravity(path, mode)` — spawns `antigravity.cmd` with
+  `-r` (reuse), `-n` (new window), or `-a` (add folder). Detached + unref'd.
+
+### `game_tools.js` — gamer-mode telemetry
+- `getNowPlaying()` — Windows.Media.Control (SMTC). Works with Spotify,
+  browser tabs, Films & TV, anything that surfaces system media.
+- `getGamePresence()` — foreground window via Win32 P/Invoke. Heuristic
+  classifier (allow-list of known game launchers, block-list of
+  non-games like Chrome/VSCode/Discord, `fullscreen + user-path`
+  fallback). Returns `{ is_game, confidence, reason, name, title, pid }`.
+- `getRichPresence()` — Discord IPC pipe handshake. Surfaces user
+  identity. Activity payload depends on Discord build.
+
+### `tts.js` — dual-engine TTS proxy
+- `registerTtsRoute(app)` mounts `/tts`. 200-char cap. Default engine
+  `edge`, alternate `google`. Single retry on engine failure.
+- Two-tier cache: in-memory LRU (80 entries) + disk
+  (`backend/cache/tts/<sha256>.mp3`, max 500 files / 200 MB, mtime LRU).
+- Streams 4096-byte chunks; first byte target ≤300ms.
+
+### `server.js` — Express transport
+Endpoints:
+
+| Path | Purpose |
+|---|---|
+| `/api/chat`, `/api/chat-stream` | Chat (legacy + SSE) |
+| `/api/execute` | Action executor with confirmation gate (HTTP 409) |
+| `/api/ai-status` | Cascade state + per-provider quota |
+| `/api/system-stats` | Telemetry (CPU/RAM/GPU/network) |
+| `/api/radar` | Wi-Fi + BLE + LAN sweep (subscription-gated) |
+| `/api/dev/git`, `/project`, `/build-feed`, `/antigravity`, `/antigravity/open` | Dev widgets |
+| `/api/game/now-playing`, `/presence`, `/rich-presence` | Gamer widgets |
+| `/tts` | TTS proxy |
+
+The radar scan no longer runs on a fixed 15s timer — it's gated by
+`/api/radar` poll requests and pauses 60s after the HUD stops asking.
+`netsh` and `arp` use `execFile` directly; only the `Get-PnpDevice` BLE
+branch still routes through PowerShell.
 
 ---
 
-## 💻 React Holographic Telemetry HUD Frontend
+## Frontend modules
 
-The frontend is a glassmorphic dashboard styled with Vanilla CSS animations, designed as an orchestration command station.
+### Layout & theme
+- `App.js` — three-rail HUD (left: always-on + mode-scoped + news;
+  center: blob; right: SystemPulse + Terminal). NavBar holds the
+  DEV/GAMER toggle.
+- `theme.css` — token system. `--accent` swaps between cobalt blue
+  (`#4ea1ff`) and adversary red (`#ff4d6d`) based on
+  `body[data-ui-mode]`. Panel bodies are dark slate; accent only paints
+  borders, headers, dots, and progress fills. Hover lifts cards 2px and
+  brightens the border + glow.
+- `widgets.css` — shared inner-tile vocabulary (`--tile-bg`,
+  `--tile-bg-hover`, `--tile-border`). Every interactive child has the
+  same hover-lift pattern.
+- `useUIMode` — persists `dev`/`gamer` in localStorage, mirrors to
+  `<body data-ui-mode>`, listens for `mode.dev` / `mode.gamer` /
+  `mode.toggle` voice events.
+- `useUiBus` — pub/sub on a `jarvis-ui` CustomEvent. Widgets subscribe
+  by action name.
 
-### 1. Interactive 3D Holographic Visualizer (`blob.js`)
-* Renders a floating, particle-based holographic entity representing J.A.R.V.I.S.'s voice state.
-* Listens to `window.simulatedBlobVolumeTarget` during speech outputs. It shifts color palettes (from pulsing cyan during listening to energetic lime/yellow when processing) and modulates particle vibration frequencies based on vocal amplitude.
+### Widgets (left rail)
 
-### 2. Async Queue Audio Player & Echo Protection (`Terminal.js`)
-* **Chunked TTS Player**:
-  Conversational text from J.A.R.V.I.S. is split into sentence chunks of `180 characters` or less via `splitSpeech`. These chunks are pushed into an asynchronous `audioQueueRef`, streaming them successively through the `/tts` audio proxy. This reduces initial speech synthesis latency to under **300ms**.
-* **Adaptive Echo-Cancellation Protection**:
-  While J.A.R.V.I.S. is speaking audio chunks, the Speech Recognition engine is temporarily disabled, and an `echoProtectUntilRef` timer is set. This blocks the system's microphone from hearing its own voice, avoiding endless feed loops.
+Always-on:
+- `TimePomodoro` — clock, date, integrated 25/5 pomodoro state machine.
+  Voice: `pomodoro.start`, `pomodoro.stop`.
+- `Weather` — current temp, feels-like / humidity / wind, 3-day forecast,
+  inline LOC override. Voice: `weather.set_location`, `weather.refresh`.
+- `NewsFeed` — mode-aware Google News RSS rotation. Voice:
+  `news.refresh`, `news.set_topic`.
 
-### 3. Real-Time HUD Telemetry Panels (`HUDWidgets.js`, `SystemStatus.js`)
-* **Telemetry Monitors**:
-  Pulls resources metrics from `/api/system-stats` at regular intervals, updating beautiful system loads charts tracking CPU, RAM, active GPU load, active VRAM allocated, temperature meters, and network upload/download telemetry speeds.
-* **Diagnostic Logging Panel**:
-  Listen to system-wide custom events (`jarvis-command-log`, `jarvis-api-status`). Displays scrolling shell logs tracking model fallback negotiations, C# interop responses, and authorization prompts.
+Mode-scoped — Dev (compact icon strip + expanded panel):
+- `DevRail` — 36px icon column with one expanded panel. Persists
+  selection in localStorage. Voice: `rail.git`, `rail.project`,
+  `rail.build`, `rail.launch`.
+- `GitGlance` — branch, dirty/clean, ahead/behind, last commit.
+- `ActiveProject` — Antigravity recent workspaces only (the
+  package.json projects panel was removed). Click reuses window,
+  Ctrl+Click forces new window.
+- `BuildFeed` — JSONL feed of recent test/build runs.
+- `DevtoolsLaunch` — 6 chip grid (VS Code, Terminal, Browser, GitHub,
+  localhost, Task Mgr).
+
+Mode-scoped — Gamer:
+- `NowPlaying` — Windows media session.
+- `GamePresence` — foreground window with game-or-not heuristic.
+- `RichPresence` — Discord IPC user identity.
+
+### Right rail
+- `SystemPulse` — CPU + RAM + VRAM compact card. Click expands to
+  60-sample sparklines + GPU name + CPU temp + network. Voice:
+  `pulse.expand`, `pulse.collapse`, `pulse.toggle`.
+- `Terminal` — chat + voice surface. Intercepts `module: "ui"` actions
+  before they hit the backend executor and dispatches them on the local
+  `jarvis-ui` event bus.
+
+### Center
+- `blob.js` — pure SVG MCU JARVIS holographic core. Four concentric
+  rings rotating at staggered speeds, 24 tick marks, cardinal notches,
+  radial scan sweep, inner hex+crosshair sigil with orbiting dots.
+  All strokes use `currentColor` so they retune to the active accent.
+  Audio reactivity: lerps mic/synthetic volume into outer-ring scale
+  (subtle breathing) and inner-cluster scale (faster/larger pulse).
+  Three.js was removed; bundle dropped from 214 kB → 79 kB gzipped.
+
+### Performance posture
+- `React.memo` on every leaf widget so the blob's per-frame
+  `setBlobConfig` writes don't re-render the rest of the tree.
+- `contain: layout style` on `.hud-left` and `.hud-right` to scope
+  reflow.
+- All animations use `transform` / `opacity` only — never `top`, `left`,
+  `width`, `background-color`. Run on the compositor.
+- `prefers-reduced-motion` honored on hex grid, ring rotations, sweep,
+  mode toggle thumb.
+- Hover effects gated behind `@media (hover: hover)` so touch devices
+  don't get stuck-hover artifacts.
 
 ---
 
-## 🔒 Security & Safe Execution Boundaries
-J.A.R.V.I.S. implements strict defense-in-depth safety boundaries:
-1. **Scope Sandboxing**: System process commands are restricted to safe process names configured in `command_registry.js`.
-2. **Directory Jail**: All file creations/deletions must stay within `OneDrive/Desktop`. Any absolute parent traversal is intercepted.
-3. **Glassmorphic Authorization Modal**: Dangerous payloads (shutdown, restart, format, file deletes) are blocked by the backend. The frontend handles this by presenting a glassmorphic confirmation modal, requiring manual user approval before adding a `confirmed: true` flag and executing the payload.
+## Disk artifacts (workspace root `.kiro/`)
+| File | Owner | Purpose |
+|---|---|---|
+| `gemini_health_cache.json` | `ai_router.js` | 24h TTL boot cache, key-fingerprinted |
+| `quota.json` | `quota_meter.js` | Persisted RPM/RPD timestamps |
+| `build-feed.log` | `dev_tools.js` | JSONL build/test history (50 entries) |
+
+`backend/cache/tts/` holds the persistent TTS layer (sha256-keyed MP3s).
+
+---
+
+## Voice control surface
+
+Every UI control has a voice command. The smart router emits a
+`module: "ui"` action; Terminal intercepts before the executor and
+dispatches on the local event bus.
+
+| Command pattern | Action |
+|---|---|
+| "switch to gamer mode" | `mode.gamer` |
+| "start a 30 minute focus timer" | `pomodoro.start` (value=30) |
+| "set weather to mumbai" | `weather.set_location` |
+| "show news about gpu drivers" | `news.set_topic` |
+| "refresh the news" | `news.refresh` |
+| "expand the system pulse" | `pulse.expand` |
+| "show git glance" / "open project" | `rail.git` / `rail.project` |
+| "weather in delhi" | `web:weather` (smart router, sub-200ms) |
+| "price of bitcoin" | `web:crypto` (smart router) |
+| "search for X" | `web:search` (smart router) |
+| Anything else | LLM cascade with tool-result loop |
+
+---
+
+## Security & safety boundaries
+1. **Filesystem jail**: file actions resolve under Desktop_Root via
+   `safeDesktopPath`; traversal, null bytes, reserved device names
+   rejected.
+2. **Process whitelist**: `apps:close` only kills processes in the
+   `CLOSE_MAP` allow-list or things matching `isSafeProcessName`.
+3. **Risky-action gate**: closed set, validator partitions
+   `ok / pending / rejected`, frontend modal re-issues with
+   `confirmed: true`.
+4. **Antigravity sandbox**: `dev_tools.openInAntigravity` requires the
+   target path to exist and resolves to absolute before spawning.
+5. **Web tools**: keyless, read-only, capped at 32 KB body / 6s timeout.
+6. **Quota meter**: throttles attempts before they hit a 429, switches
+   to local Ollama when both Gemini providers saturate.
+7. **Focus-guarded SendKeys**: messaging / app automation captures the
+   target HWND, re-checks `GetForegroundWindow` before each keystroke,
+   aborts with `FOCUS_LOST` if the user clicks away.
+
+---
+
+## Known gaps (see `TODO.md`)
+- Quota visualization in the HUD not yet rendered (backend exposes it).
+- Spec-level pipeline tasks 3.3, 5.3, 6.1, 6.3, 9.1, 9.2, 11.1, 11.2,
+  12.2, 13.2, 14.2, 15.1 still pending in the
+  `jarvis-voice-pipeline` spec.
+- Settings panel still uses a color picker that conflicts with the
+  rival-color theme; should be replaced with size + sensitivity sliders
+  only.

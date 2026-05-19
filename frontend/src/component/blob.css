@@ -1,0 +1,121 @@
+/*
+ * AIVoiceBlob — Iron Man / JARVIS holographic core.
+ *
+ * All animation runs on the GPU compositor: every keyframe touches only
+ * `transform` and `opacity`. CSS variables drive accent color so the blob
+ * inherits the dev/gamer theme automatically.
+ */
+
+.jarvis-blob {
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  user-select: none;
+  z-index: 5;
+  color: var(--accent);
+  /* Soft accent glow behind everything. */
+  filter: drop-shadow(0 0 24px var(--accent-glow));
+  transition: color 220ms ease, filter 220ms ease;
+}
+
+.jarvis-blob.is-dragging-mode {
+  pointer-events: auto;
+  cursor: grab;
+  z-index: 10000;
+  border: 1px dashed var(--accent-soft);
+  border-radius: 50%;
+}
+
+.jarvis-blob.is-dragging-mode:active {
+  cursor: grabbing;
+}
+
+.blob-outer,
+.blob-inner {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform;
+}
+
+.blob-inner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 280px;
+  height: 280px;
+  transform: translate(-50%, -50%);
+  inset: auto;
+  pointer-events: none;
+}
+
+.blob-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Strokes everywhere inherit `currentColor` from .jarvis-blob → so accent
+   color flips automatically on theme change. */
+.blob-svg circle,
+.blob-svg line,
+.blob-svg path,
+.blob-svg polygon {
+  stroke: currentColor;
+}
+
+.blob-ticks line { stroke: currentColor; opacity: 0.55; }
+
+.blob-notches path {
+  fill: currentColor;
+  opacity: 0.85;
+  stroke: none;
+}
+
+.blob-crosshair line { stroke: currentColor; opacity: 0.85; }
+
+/* --------------------- Rotations (GPU only) --------------------- */
+
+@keyframes spin-cw  { from { transform: rotate(0deg); }   to { transform: rotate(360deg); } }
+@keyframes spin-ccw { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+
+.blob-rotate-cw-slow   { animation: spin-cw 60s linear infinite;   transform-origin: center; will-change: transform; }
+.blob-rotate-ccw-slow  { animation: spin-ccw 38s linear infinite;  transform-origin: center; will-change: transform; }
+.blob-rotate-cw-medium { animation: spin-cw 22s linear infinite;   transform-origin: center; will-change: transform; }
+.blob-rotate-cw-fast   { animation: spin-cw  9s linear infinite;   transform-origin: center; will-change: transform; }
+
+/* Per-ring rotation: each ring gets its own animation curve so the
+   outer ring can drift slowly while the inner ones whirl. */
+.blob-ring-spin-0 { animation: spin-cw  120s linear infinite; transform-origin: center; }
+.blob-ring-spin-1 { animation: spin-ccw  44s linear infinite; transform-origin: center; }
+.blob-ring-spin-2 { animation: spin-cw   28s linear infinite; transform-origin: center; }
+.blob-ring-spin-3 { animation: spin-ccw  18s linear infinite; transform-origin: center; }
+
+/* Radial scan sweep — full revolution every 5 seconds with a soft ease
+   so the leading edge has weight. */
+.blob-sweep {
+  animation: spin-cw 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  transform-origin: center;
+  will-change: transform;
+}
+
+/* Reduced-motion users get a static composition — no spinning. */
+@media (prefers-reduced-motion: reduce) {
+  .blob-rotate-cw-slow,
+  .blob-rotate-ccw-slow,
+  .blob-rotate-cw-medium,
+  .blob-rotate-cw-fast,
+  .blob-ring-spin-0,
+  .blob-ring-spin-1,
+  .blob-ring-spin-2,
+  .blob-ring-spin-3,
+  .blob-sweep {
+    animation: none;
+  }
+}

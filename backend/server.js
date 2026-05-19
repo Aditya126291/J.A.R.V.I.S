@@ -120,6 +120,52 @@ app.get('/api/system-stats', async (req, res) => {
   res.json(stats);
 });
 
+// --- Dev-mode widget endpoints (read-only project inspectors) -----------
+const devTools = require('./modules/dev_tools');
+
+app.get('/api/dev/git', async (req, res) => {
+  res.json(await devTools.getGitGlance(req.query.root));
+});
+
+app.get('/api/dev/project', async (req, res) => {
+  res.json(await devTools.getProjectInfo(req.query.root));
+});
+
+app.get('/api/dev/build-feed', async (req, res) => {
+  res.json(await devTools.getBuildFeed(req.query.root));
+});
+
+app.post('/api/dev/build-feed', express.json({ limit: '32kb' }), async (req, res) => {
+  const event = req.body || {};
+  res.json(devTools.recordBuildEvent(req.query.root, event));
+});
+
+app.get('/api/dev/antigravity', async (req, res) => {
+  const limit = Number(req.query.limit) || 12;
+  res.json(await devTools.getAntigravityWorkspaces({ limit }));
+});
+
+app.post('/api/dev/antigravity/open', express.json({ limit: '8kb' }), (req, res) => {
+  const target = String(req.body?.path || '');
+  const mode = String(req.body?.mode || 'reuse').toLowerCase();
+  res.json(devTools.openInAntigravity(target, mode));
+});
+
+// --- Gamer-mode widget endpoints (read-only) ----------------------------
+const gameTools = require('./modules/game_tools');
+
+app.get('/api/game/now-playing', async (req, res) => {
+  res.json(await gameTools.getNowPlaying());
+});
+
+app.get('/api/game/presence', async (req, res) => {
+  res.json(await gameTools.getGamePresence());
+});
+
+app.get('/api/game/rich-presence', async (req, res) => {
+  res.json(await gameTools.getRichPresence());
+});
+
 async function executePayload(payload) {
   if (payload.module === 'apps') return handleAppCommand(payload.action, payload.value);
   if (payload.module === 'system') return handleSystemCommand(payload.action, payload.value);

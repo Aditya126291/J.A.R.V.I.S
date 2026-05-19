@@ -1,5 +1,7 @@
 const config = require('./config');
-const { negotiateModel } = require('./gemini_health');
+const path = require('path');
+const { negotiateModel, pingModel } = require('./gemini_health');
+const quotaMeter = require('./quota_meter');
 const {
   normalizePayload,
   normalizeSimpleText,
@@ -90,7 +92,12 @@ const providers = [
     failCount: 0,
     cooldownUntil: 0,
     maxTokens: 1024,
-    manualOnly: true,
+    // Used to be `manualOnly: true` (only routed to via the
+    // "enable power mode" voice command). Now Ollama is a real fallback:
+    // when both Gemini providers are saturated (≥80% of their RPM cap)
+    // the router routes here automatically so we keep responding without
+    // burning quota.
+    manualOnly: false,
   },
   {
     id: 'emergency',
@@ -154,6 +161,77 @@ function cleanTarget(value) {
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
+}
+
+// UI control fast paths. These map natural-language commands to
+// `module: "ui"` actions that the frontend Terminal intercepts and
+// dispatches on the local event bus to drive widget state.
+function tryUiFastPath(cleaned) {
+  const lower = cleaned.toLowerCase();
+  let m;
+
+  // Mode toggling — "switch to dev mode", "go to gamer mode", etc.
+  if (/\b(?:switch|change|go)\s+(?:to\s+)?(?:the\s+)?(?:dev(?:eloper)?)\s+mode\b/.test(lower) ||
+      /\b(?:dev(?:eloper)?\s+mode\s+(?:on|please))\b/.test(lower) ||
+      /\b(?:enter|enable)\s+dev(?:eloper)?\s+mode\b/.test(lower)) {
+    return uiAction('mode.dev', null, 'Switching to developer mode.');
+  }
+  if (/\b(?:switch|change|go)\s+(?:to\s+)?(?:the\s+)?(?:gam(?:e|er|ing))\s+mode\b/.test(lower) ||
+      /\b(?:gam(?:e|er|ing)\s+mode\s+(?:on|please))\b/.test(lower) ||
+      /\b(?:enter|enable)\s+gam(?:e|er|ing)\s+mode\b/.test(lower)) {
+    return uiAction('mode.gamer', null, 'Switching to gamer mode.');
+  }
+  if (/\b(?:toggle|flip)\s+(?:the\s+)?(?:ui\s+|hud\s+)?mode\b/.test(lower)) {
+    return uiAction('mode.toggle', null, 'Toggling mode.');
+  }
+
+  // Pomodoro / focus timer.
+  m = lower.match(/\b(?:start|begin|run)\s+(?:a\s+)?(?:(\d{1,3})[-\s]*(?:min(?:ute)?s?)?\s+)?(?:focus|study|pomodoro|work)\s+(?:timer|session|mode)?/);
+  if (m) {
+    const mins = m[1] ? Number(m[1]) : null;
+    const speech = mins ? `Starting a ${mins}-minute focus session.` : 'Starting a focus session.';
+    return uiAction('pomodoro.start', mins, speech);
+  }
+  m = lower.match(/\b(?:start|begin)\s+(\d{1,3})\s+min(?:ute)?\s+(?:focus|timer|pomodoro)\b/);
+  if (m) return uiAction('pomodoro.start', Number(m[1]), `Starting a ${m[1]}-minute focus session.`);
+  if (/\b(?:stop|cancel|end)\s+(?:the\s+)?(?:focus|study|pomodoro|work)\s+(?:timer|session|mode)?\b/.test(lower)) {
+    return uiAction('pomodoro.stop', null, 'Stopping the focus session.');
+  }
+
+  // Weather widget.
+  m = lower.match(/\b(?:set|change|switch)\s+(?:the\s+)?weather\s+(?:to|for|in)\s+(.+?)[?.!]*$/);
+  if (m && m[1].trim()) return uiAction('weather.set_location', m[1].trim(), `Setting the weather widget to ${m[1].trim()}.`);
+  m = lower.match(/\b(?:show|display)\s+(?:the\s+)?weather\s+(?:for|in|of)\s+(.+?)\s+(?:on|in)\s+(?:the\s+)?(?:widget|hud|dashboard)/);
+  if (m && m[1].trim()) return uiAction('weather.set_location', m[1].trim(), `Setting the weather widget to ${m[1].trim()}.`);
+  if (/\brefresh\s+(?:the\s+)?weather\b/.test(lower)) {
+    return uiAction('weather.refresh', null, 'Refreshing the weather.');
+  }
+
+  // News.
+  m = lower.match(/\b(?:show|display|set)\s+(?:the\s+)?news\s+(?:about|on|for)\s+(.+?)[?.!]*$/);
+  if (m && m[1].trim()) return uiAction('news.set_topic', m[1].trim(), `Pulling news about ${m[1].trim()}.`);
+  if (/\brefresh\s+(?:the\s+)?news\b/.test(lower) || /\b(?:next|new)\s+news\b/.test(lower)) {
+    return uiAction('news.refresh', null, 'Refreshing news.');
+  }
+
+  // System pulse expand / collapse.
+  if (/\b(?:expand|open|show)\s+(?:the\s+)?(?:system\s+)?(?:pulse|telemetry|stats)\b/.test(lower)) {
+    return uiAction('pulse.expand', null, 'Expanding system pulse.');
+  }
+  if (/\b(?:collapse|close|hide)\s+(?:the\s+)?(?:system\s+)?(?:pulse|telemetry|stats)\b/.test(lower)) {
+    return uiAction('pulse.collapse', null, 'Collapsing system pulse.');
+  }
+
+  return null;
+}
+
+function uiAction(action, value, speech) {
+  return makeStructured({
+    speech,
+    actions: [{ module: 'ui', action, value }],
+    provider: 'smart_router',
+    status: 'action',
+  });
 }
 
 // Live-data fast paths (web:*). Run before the conversation gate so words
@@ -484,6 +562,11 @@ function trySmartRoute(userMessage) {
       status: 'clarify',
     });
   }
+
+  // UI control fast-paths run BEFORE web fast-paths so that "set weather
+  // to tokyo" maps to `ui:weather.set_location` rather than `web:search`.
+  const uiShortcut = tryUiFastPath(cleaned);
+  if (uiShortcut) return uiShortcut;
 
   // Web fast-paths run BEFORE the conversation gate. The wiki/weather/news
   // patterns intentionally use words like "who", "what", "tell" that the
@@ -1040,6 +1123,11 @@ function emergencySpeech() {
 }
 
 function callGeminiLive(provider, messages) {
+  // Meter the Live WS path too. callGemini already meters the dispatcher
+  // case where it calls into here, but external callers (boot init,
+  // health monitor) bypass that and need their own count.
+  quotaMeter.record(provider.id);
+
   return new Promise((resolve, reject) => {
     if (typeof WebSocket !== 'function') {
       reject(providerError('This Node.js runtime does not support WebSocket.', 'WEBSOCKET_UNAVAILABLE'));
@@ -1158,6 +1246,13 @@ function callGeminiLive(provider, messages) {
 async function callGemini(provider, messages) {
   if (!provider.apiKey) throw providerError(`${provider.name} API key is missing`, 'MISSING_API_KEY');
 
+  // Meter every Gemini hit — both `:countTokens` health checks and real
+  // `:streamGenerateContent` chats land here unless they're routed via
+  // the streaming path (which records separately). Recording happens
+  // before the network call on purpose: rate limiting throttles attempts,
+  // not just successes.
+  quotaMeter.record(provider.id);
+
   if (isLiveGeminiModel(provider.model)) {
     return callGeminiLive(provider, messages);
   }
@@ -1258,7 +1353,28 @@ function getProviderList() {
   if (forceProviderId) {
     return providers.filter((p) => (p.id === forceProviderId || p.id === 'emergency') && p.configured);
   }
-  return providers.filter((p) => !p.manualOnly && p.configured);
+
+  // Quota-aware ordering: when both Gemini providers are at/over 80%
+  // of their per-minute or per-day cap, we shuffle Ollama ahead of them
+  // so the cascade lands on local inference instead of eating a 429.
+  // The Gemini entries stay in the list (after Ollama) so a brief Ollama
+  // failure can still cascade to cloud — they're just deprioritised.
+  const all = providers.filter((p) => p.configured);
+  const geminiIds = all
+    .filter((p) => p.type === 'gemini')
+    .map((p) => p.id);
+  const bothSaturated = geminiIds.length > 0 && quotaMeter.allNearLimit(geminiIds, 0.8);
+
+  if (bothSaturated) {
+    const ollama = all.find((p) => p.type === 'ollama');
+    const rest = all.filter((p) => p.type !== 'ollama');
+    return ollama ? [ollama, ...rest] : rest;
+  }
+
+  // Default ordering: filter out manualOnly providers (Ollama is no longer
+  // manualOnly by default, but the flag is preserved for any future
+  // user-toggled providers) so the cascade walks Gemini first.
+  return all.filter((p) => !p.manualOnly);
 }
 
 async function chat(userMessage) {
@@ -1436,25 +1552,78 @@ function syncProvidersWithConfig() {
   }
 }
 
+const WORKSPACE_ROOT = path.resolve(__dirname, '..', '..');
+
+// Boot-cache: stash the last-known healthy model per provider id so we
+// don't burn API calls negotiating on every restart. The cache is keyed
+// by `${apiKey-fingerprint}:${configuredModel}` so changing either field
+// invalidates the cache automatically.
+const HEALTH_CACHE_DIR  = path.join(WORKSPACE_ROOT, '.kiro');
+const HEALTH_CACHE_FILE = path.join(HEALTH_CACHE_DIR, 'gemini_health_cache.json');
+const HEALTH_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+
+function fingerprintKey(apiKey) {
+  if (!apiKey) return '';
+  const s = String(apiKey);
+  // Stable, irreversible fingerprint — never write the raw key to disk.
+  return require('crypto').createHash('sha256').update(s).digest('hex').slice(0, 16);
+}
+
+function readHealthCache() {
+  try {
+    const raw = require('fs').readFileSync(HEALTH_CACHE_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch { return {}; }
+}
+
+function writeHealthCache(cache) {
+  try {
+    require('fs').mkdirSync(HEALTH_CACHE_DIR, { recursive: true });
+    const tmp = `${HEALTH_CACHE_FILE}.tmp`;
+    require('fs').writeFileSync(tmp, JSON.stringify(cache), 'utf8');
+    require('fs').renameSync(tmp, HEALTH_CACHE_FILE);
+  } catch { /* best-effort */ }
+}
+
+/**
+ * Lightweight health probe.
+ *
+ * Replaces the per-tick `negotiateModel` walk (which pinged ~5 candidate
+ * models per provider per cycle = ~600 free-tier requests/day burned on
+ * background polling). We only run a single `pingModel` and let the
+ * caller's normal failover handle a misconfigured model.
+ *
+ * Returns true iff the configured model responds healthy.
+ */
+async function quickHealthCheck(provider) {
+  if (!provider || provider.type !== 'gemini' || !provider.configured) return false;
+  try {
+    const res = await pingModel(provider.apiKey, provider.model);
+    return Boolean(res && res.ok);
+  } catch { return false; }
+}
+
+// Health-check interval: 5 minutes, not 30 seconds. The router still
+// reacts to live failures via failCount + cooldownUntil (see chatStream),
+// so the monitor only needs to wake up rarely to recover providers that
+// have been quiet for a while.
+const HEALTH_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+
 function startHealthMonitor() {
   if (healthCheckInterval) return;
 
   healthCheckInterval = setInterval(async () => {
     syncProvidersWithConfig();
     for (const provider of providers) {
-      if (provider.available || provider.type === 'emergency' || provider.manualOnly) continue;
+      if (provider.available || provider.type === 'emergency') continue;
       if (Date.now() < provider.cooldownUntil) continue;
       if (!provider.configured) continue;
 
-      try {
-        if (provider.type === 'gemini') {
-          const res = await negotiateModel(provider.apiKey, provider.model);
-          if (!res.success) {
-            throw new Error(res.message);
-          }
-          provider.model = res.model; // update potentially negotiated operational model name
-        }
-        
+      // Lightweight ping only — single request per provider, not the
+      // 5-candidate negotiation walk we used to do every 30s.
+      const ok = await quickHealthCheck(provider);
+      if (ok) {
         provider.available = true;
         provider.failCount = 0;
         provider.lastErrorCode = null;
@@ -1472,13 +1641,15 @@ function startHealthMonitor() {
           };
           activeProviderId = provider.id;
         }
-      } catch (e) {
-        provider.lastErrorCode = e.code || 'UNKNOWN';
-        provider.lastError = e.message;
+      } else {
+        // Don't escalate to a full re-negotiation here — that would burn
+        // 5 requests per provider per tick. If the configured model is
+        // genuinely gone, the user will see it on the next chat call,
+        // which has its own better diagnostic path.
         provider.cooldownUntil = Date.now() + getCooldownMs(Math.max(provider.failCount, 1));
       }
     }
-  }, 30000);
+  }, HEALTH_CHECK_INTERVAL_MS);
 }
 
 function stopHealthMonitor() {
@@ -1489,19 +1660,24 @@ function stopHealthMonitor() {
 }
 
 function getStatus() {
+  const quota = quotaMeter.snapshot();
   return {
     activeProvider: activeProviderId,
     activeProviderName: providers.find((p) => p.id === activeProviderId)?.name || 'Unknown',
-    providers: providers.map((p) => ({
-      id: p.id,
-      name: p.name,
-      available: p.available,
-      cooldownUntil: p.cooldownUntil,
-      failCount: p.failCount,
-      configured: p.configured,
-      lastErrorCode: p.lastErrorCode || null,
-      lastError: p.lastError || null,
-    })),
+    providers: providers.map((p) => {
+      const q = quota[p.id] || null;
+      return {
+        id: p.id,
+        name: p.name,
+        available: p.available,
+        cooldownUntil: p.cooldownUntil,
+        failCount: p.failCount,
+        configured: p.configured,
+        lastErrorCode: p.lastErrorCode || null,
+        lastError: p.lastError || null,
+        quota: q,
+      };
+    }),
     conversationLength: conversationHistory.length,
     lastSwitch: lastProviderSwitch,
   };
@@ -1512,46 +1688,62 @@ function clearHistory() {
 }
 
 async function initializeRouter() {
-  console.log('[AI ROUTER] Starting dynamic provider negotiation and verification...');
-  
-  // Dynamic sync config first
+  console.log('[AI ROUTER] Provider boot — checking health cache...');
+
+  // Sync first so we read the latest .env values.
   syncProvidersWithConfig();
 
-  // Resolve primary model
-  const primary = providers.find(p => p.id === 'gemini_primary');
-  if (primary && primary.configured) {
-    const res = await negotiateModel(primary.apiKey, primary.model);
+  const cache = readHealthCache();
+  const now = Date.now();
+  const updatedCache = { ...cache };
+  let cacheChanged = false;
+
+  for (const id of ['gemini_primary', 'gemini_fallback']) {
+    const provider = providers.find((p) => p.id === id);
+    if (!provider || !provider.configured) continue;
+
+    const cacheKey = `${fingerprintKey(provider.apiKey)}:${provider.model}`;
+    const entry = cache[cacheKey];
+    const fresh = entry && entry.healthy && (now - entry.ts) < HEALTH_CACHE_TTL_MS;
+
+    if (fresh) {
+      // Trust the cache — no API call. The first real chat hit will
+      // detect a quietly-broken model via failCount the same way it
+      // already does for runtime failures.
+      provider.available = true;
+      provider.failCount = 0;
+      provider.lastErrorCode = null;
+      provider.lastError = null;
+      console.log(`[AI ROUTER] ${provider.name}: cached healthy (${entry.model || provider.model})`);
+      continue;
+    }
+
+    // Cache miss / stale → ONE negotiation walk to settle. Result is
+    // cached so subsequent restarts cost zero API calls.
+    console.log(`[AI ROUTER] ${provider.name}: negotiating ${provider.model}...`);
+    const res = await negotiateModel(provider.apiKey, provider.model);
     if (res.success) {
-      primary.model = res.model;
-      primary.available = true;
-      primary.lastErrorCode = null;
-      primary.lastError = null;
+      provider.model = res.model;
+      provider.available = true;
+      provider.lastErrorCode = null;
+      provider.lastError = null;
+      updatedCache[cacheKey] = { healthy: true, model: res.model, ts: now };
+      cacheChanged = true;
     } else {
-      primary.available = false;
-      primary.lastErrorCode = 'NEGOTIATION_FAILED';
-      primary.lastError = res.message;
+      provider.available = false;
+      provider.lastErrorCode = 'NEGOTIATION_FAILED';
+      provider.lastError = res.message;
+      // Cache the failure too, with a much shorter TTL implicit (the
+      // cooldown logic runs anyway on the next chat hit).
+      updatedCache[cacheKey] = { healthy: false, model: provider.model, ts: now };
+      cacheChanged = true;
     }
   }
 
-  // Resolve fallback model
-  const fallback = providers.find(p => p.id === 'gemini_fallback');
-  if (fallback && fallback.configured) {
-    const res = await negotiateModel(fallback.apiKey, fallback.model);
-    if (res.success) {
-      fallback.model = res.model;
-      fallback.available = true;
-      fallback.lastErrorCode = null;
-      fallback.lastError = null;
-    } else {
-      fallback.available = false;
-      fallback.lastErrorCode = 'NEGOTIATION_FAILED';
-      fallback.lastError = res.message;
-    }
-  }
-  
-  // Re-evaluate active provider after verification
+  if (cacheChanged) writeHealthCache(updatedCache);
+
   activeProviderId = providers.find((p) => p.available && !p.manualOnly)?.id || 'emergency';
-  console.log(`[AI ROUTER] Dynamic routing settled. Active: "${activeProviderId}"`);
+  console.log(`[AI ROUTER] Boot complete. Active: "${activeProviderId}"`);
 }
 
 // Start boot check and health monitor
@@ -1625,6 +1817,9 @@ async function streamGeminiSse(provider, messages, onText) {
   if (!provider.apiKey) {
     throw providerError(`${provider.name} API key is missing`, 'MISSING_API_KEY');
   }
+
+  // Meter the SSE call too — the streaming chat path bypasses callGemini.
+  quotaMeter.record(provider.id);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 60000);
@@ -2070,14 +2265,40 @@ async function chatStream(userMessage, onEvent) {
       // result to history as a tool note, and re-prompt this same provider
       // with `[TOOL_RESULT]` so the model can speak a natural-language
       // answer instead of leaving the user with a raw action JSON.
+      //
+      // Soft cap: the re-prompt is a SECOND Gemini call on top of the
+      // original turn. Under saturation we'd be doubling the burn rate
+      // exactly when we can least afford it. So when the active provider
+      // is at >=80% of its RPM, we skip the re-prompt and fall back to
+      // formatWebResult — the user gets a clean spoken summary from the
+      // tool result without a second LLM round-trip.
       const firstWebFromLlm = finalActions.find(
         (a) => a && a.module === 'web'
       );
       const reentry = (typeof userMessage === 'string') && /^\[TOOL_RESULT\]/.test(userMessage);
       if (firstWebFromLlm && !reentry) {
+        const saturated = quotaMeter.wouldExceed(provider.id, 0.8);
         try {
-          const { handleWebCommand } = require('./web');
+          const { handleWebCommand, formatWebResult } = require('./web');
           const toolResult = await handleWebCommand(firstWebFromLlm.action, firstWebFromLlm.value);
+
+          if (saturated) {
+            // Skip the re-prompt; speak the formatted tool result directly.
+            const formatted = formatWebResult(firstWebFromLlm.action, toolResult)
+              || finalSpeech
+              || "I couldn't summarise that, sir.";
+            safeOnEvent(onEvent, 'speech_delta', { text: formatted });
+            safeOnEvent(onEvent, 'done', {
+              speech: formatted,
+              actions: [],
+              status: 'chat',
+              provider: `${provider.name} (quota-soft-cap)`,
+            });
+            addToHistory('user', userMessage);
+            addToHistory('assistant', formatted);
+            return;
+          }
+
           // Re-prompt Gemini once with the tool result as a synthetic user
           // turn. We mark the message with [TOOL_RESULT] so the recursion
           // guard above prevents infinite loops if the model emits another

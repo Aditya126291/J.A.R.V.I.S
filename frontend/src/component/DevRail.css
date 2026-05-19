@@ -1,0 +1,112 @@
+/*
+ * DevRail — vertical icon strip + expanded panel.
+ *
+ * Icons sit on dark slate with thin accent borders; active icon glows
+ * stronger and the inactive ones still hint at the accent on the border.
+ * Hover lifts the chip 1px and pops the glow.
+ */
+
+.dev-rail {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 8px;
+  align-items: stretch;
+  min-height: 0;
+}
+
+.dev-rail-icons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 2px;
+}
+
+.dev-rail-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tile-bg);
+  border: 1px solid var(--accent-soft);
+  border-radius: var(--radius-chip);
+  cursor: pointer;
+  position: relative;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    box-shadow 220ms ease;
+  /* Chamfer top-right corner only on the chips. */
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+  outline: none;
+  color: var(--ink-soft);
+}
+
+@media (hover: hover) {
+  .dev-rail-icon:hover {
+    background: var(--tile-bg-hover);
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: translateX(-2px) translateY(-1px);
+    box-shadow: 0 0 12px var(--accent-glow);
+  }
+}
+
+.dev-rail-icon.active {
+  border-color: var(--accent);
+  background: var(--tile-bg-hover);
+  color: var(--accent);
+  box-shadow: 0 0 14px var(--accent-glow);
+}
+
+.dev-rail-icon.active::before {
+  content: '';
+  position: absolute;
+  right: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 5px 0 5px 6px;
+  border-color: transparent transparent transparent var(--accent);
+  filter: drop-shadow(0 0 4px var(--accent-glow));
+}
+
+.dev-rail-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dev-rail-panel { min-width: 0; }
+
+.dev-rail-icon[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 44px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(2, 6, 14, 0.95);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 3px 8px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.6rem;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dev-rail-icon,
+  .dev-rail-icon:hover { transform: none; }
+}

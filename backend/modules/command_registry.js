@@ -167,6 +167,18 @@ const VALID_ACTIONS = {
   // Live-data tools (keyless). All non-risky: read-only fetches, no
   // destructive side effects, no confirmation gate.
   web: new Set(['search', 'fetch', 'weather', 'wiki', 'time', 'crypto', 'news']),
+  // UI control tokens — emitted by the smart router for voice-driven HUD
+  // commands ("set weather to tokyo", "start a focus timer", etc.). The
+  // frontend Terminal intercepts these before they hit /api/execute and
+  // dispatches them on the local jarvis-ui event bus instead. Backend
+  // handler is intentionally absent.
+  ui: new Set([
+    'mode.dev', 'mode.gamer', 'mode.toggle',
+    'pomodoro.start', 'pomodoro.stop',
+    'weather.set_location', 'weather.refresh',
+    'news.refresh', 'news.set_topic',
+    'pulse.expand', 'pulse.collapse', 'pulse.toggle',
+  ]),
 };
 
 // Closed Risky_Action_Set per design.md / requirements.md (Glossary).
@@ -293,6 +305,23 @@ function summarizeAction(payload) {
   }
   if (payload.module === 'message' && isPlainObject(value)) {
     return `send ${value.app || 'message'} message to ${value.contact || 'contact'}`;
+  }
+  if (payload.module === 'ui') {
+    const a = payload.action;
+    const v = payload.value || '';
+    if (a === 'mode.dev')              return 'switch to developer mode';
+    if (a === 'mode.gamer')            return 'switch to gamer mode';
+    if (a === 'mode.toggle')           return 'toggle UI mode';
+    if (a === 'pomodoro.start')        return v ? `start a ${v}-minute focus timer` : 'start a focus timer';
+    if (a === 'pomodoro.stop')         return 'stop the focus timer';
+    if (a === 'weather.set_location')  return `change the weather widget to ${v}`;
+    if (a === 'weather.refresh')       return 'refresh the weather';
+    if (a === 'news.refresh')          return 'refresh the news';
+    if (a === 'news.set_topic')        return `change news topic to ${v}`;
+    if (a === 'pulse.expand')          return 'expand the system pulse';
+    if (a === 'pulse.collapse')        return 'collapse the system pulse';
+    if (a === 'pulse.toggle')          return 'toggle the system pulse';
+    return `UI ${a}`;
   }
   if (payload.module === 'web') {
     if (payload.action === 'weather') return `look up the weather in ${value || 'a location'}`;
@@ -485,6 +514,18 @@ function normalizePayload(input) {
       value = normalizeSimpleText(value, cap);
       if (!value) return null;
       if (action === 'fetch' && !/^https?:\/\//i.test(value)) return null;
+    } else if (moduleName === 'ui') {
+      // UI control actions. `value` is optional and free-form: a string for
+      // text inputs (city for weather.set_location, topic for news), or a
+      // bounded integer for time/duration (minutes for pomodoro.start).
+      // The frontend widget validates further.
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        // Cap at 24h-worth of minutes to keep things sane.
+        value = Math.max(0, Math.min(1440, Math.round(value)));
+      } else if (value !== null && value !== undefined) {
+        const trimmed = normalizeSimpleText(value, 120);
+        value = trimmed === '' ? null : trimmed;
+      }
     } else if (moduleName === 'message') {
       if (!isPlainObject(value)) return null;
       value = {

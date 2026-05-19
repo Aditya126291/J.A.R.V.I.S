@@ -116,3 +116,87 @@ export function ttsUrl(text, lang) {
 }
 
 export { API_BASE_URL };
+
+
+/**
+ * Direct call into the keyless web tools (backend/modules/web.js).
+ * Bypasses the LLM entirely so widgets that just need raw data don't
+ * burn Gemini tokens. Returns the tool's native shape:
+ *   { ok: true, ... }      on success
+ *   { ok: false, error }   on failure (never throws for HTTP-level errors)
+ */
+export async function callWebTool(action, value) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/execute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ module: 'web', action, value, confirmed: true }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, error: data.error || `http_${res.status}` };
+    }
+    // /api/execute returns the tool result directly under top-level keys
+    // (e.g. ok, location, current, items, etc.) so we can return as-is.
+    return data;
+  } catch (e) {
+    return { ok: false, error: 'network_error' };
+  }
+}
+
+
+// --- Dev-mode endpoints ----------------------------------------------------
+
+export function getGitGlance(root) {
+  const q = root ? `?root=${encodeURIComponent(root)}` : '';
+  return jsonRequest(`/api/dev/git${q}`).catch(() => ({ ok: false, error: 'network_error' }));
+}
+
+export function getProjectInfo(root) {
+  const q = root ? `?root=${encodeURIComponent(root)}` : '';
+  return jsonRequest(`/api/dev/project${q}`).catch(() => ({ ok: false, error: 'network_error' }));
+}
+
+export function getBuildFeed(root) {
+  const q = root ? `?root=${encodeURIComponent(root)}` : '';
+  return jsonRequest(`/api/dev/build-feed${q}`).catch(() => ({ ok: false, error: 'network_error' }));
+}
+
+// One-click "open this app" helper used by the devtools quick-launch widget.
+// Routes through the existing keyless `apps:open` action handler so we
+// reuse the resolveOpenTarget logic and don't reinvent path/url normalisation.
+export function openApp(target) {
+  return executeJarvisAction({ module: 'apps', action: 'open', value: target }, true);
+}
+
+
+// --- Gamer-mode endpoints --------------------------------------------------
+
+export function getNowPlaying() {
+  return jsonRequest('/api/game/now-playing').catch(() => ({ ok: false, error: 'network_error' }));
+}
+
+export function getGamePresence() {
+  return jsonRequest('/api/game/presence').catch(() => ({ ok: false, error: 'network_error' }));
+}
+
+export function getRichPresence() {
+  return jsonRequest('/api/game/rich-presence').catch(() => ({ ok: false, error: 'network_error' }));
+}
+
+
+// --- Antigravity workspaces -----------------------------------------------
+
+export function getAntigravityWorkspaces() {
+  return jsonRequest('/api/dev/antigravity').catch(() => ({ ok: false, error: 'network_error' }));
+}
+
+export function openAntigravityWorkspace(targetPath, mode = 'reuse') {
+  return fetch(`${API_BASE_URL}/api/dev/antigravity/open`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: targetPath, mode }),
+  })
+    .then((r) => r.json())
+    .catch(() => ({ success: false, error: 'network_error' }));
+}

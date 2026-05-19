@@ -1,0 +1,127 @@
+/*
+ * SystemPulse — telemetry card. Inherits .hud-card from theme.css.
+ * Dark slate body, accent-only on bars / sparkline / values.
+ */
+
+.pulse-widget {
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+}
+.pulse-widget:focus-visible { border-color: var(--accent); }
+.pulse-widget.expanded { padding-bottom: 14px; }
+
+.pulse-empty {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.82rem;
+  color: var(--ink-faint);
+  letter-spacing: 1.5px;
+  text-align: center;
+  padding: 10px 0;
+}
+
+.pulse-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  position: relative;
+  z-index: 1;
+}
+
+.pulse-row-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 3px;
+}
+
+.pulse-row-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.66rem;
+  letter-spacing: 1.5px;
+  color: var(--ink-soft);
+}
+
+.pulse-row-value {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.pulse-row-unit {
+  font-size: 0.66rem;
+  color: var(--ink-faint);
+  margin-left: 4px;
+  letter-spacing: 0.5px;
+}
+
+.pulse-row-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pulse-row-bar-track {
+  flex: 1;
+  height: 4px;
+  background: rgba(228, 236, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.pulse-row-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent-glow);
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 2px;
+}
+
+.pulse-spark {
+  flex-shrink: 0;
+  opacity: 0.85;
+  color: var(--accent);
+}
+
+.pulse-extra {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--panel-border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  z-index: 1;
+}
+
+.pulse-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.78rem;
+}
+
+.pulse-meta-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.62rem;
+  letter-spacing: 1.5px;
+  color: var(--ink-faint);
+}
+
+.pulse-meta-value {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  color: var(--ink);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70%;
+}
+
+.pulse-hint {
+  font-size: 0.85rem;
+  color: var(--ink-faint);
+  margin-left: auto;
+}

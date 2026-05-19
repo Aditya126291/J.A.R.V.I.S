@@ -1,0 +1,220 @@
+/*
+ * JARVIS theme — accent-on-dark color system.
+ *
+ * Borders, dots, headings, and progress fills carry the active accent.
+ * Card bodies stay near-black so the HUD reads as a console with
+ * accent trim — the look from the reference image (ROG-style):
+ *   solid dark panels + colored borders + colored titles.
+ *
+ *   dev   → cobalt blue    (#4ea1ff)
+ *   gamer → adversary red  (#ff4d6d)
+ *
+ * Accents flip via `body[data-ui-mode='gamer']`. The transition runs on
+ * color/border/shadow tokens for 220ms — layout is never animated.
+ */
+
+:root {
+  /* Shared foundation — never themed by mode. */
+  --bg-deep:        #03060d;
+  --bg-deeper:      #01030a;
+
+  /* Panel bodies are the same near-black in both modes. The accent only
+     shows up at the edge and on text — not as a wash over the whole
+     surface. */
+  --panel-bg:       linear-gradient(180deg, rgba(8, 12, 22, 0.92), rgba(4, 7, 14, 0.96));
+  --panel-bg-hover: linear-gradient(180deg, rgba(12, 18, 30, 0.98), rgba(6, 10, 18, 1));
+  --panel-bg-deep:  rgba(2, 5, 12, 0.95);
+
+  --grid-fade:      rgba(120, 200, 255, 0.022);
+  --grid-fade-x:    rgba(120, 200, 255, 0.035);
+
+  --ink:            rgba(228, 236, 255, 0.95);
+  --ink-soft:       rgba(228, 236, 255, 0.65);
+  --ink-faint:      rgba(228, 236, 255, 0.4);
+  --ink-ghost:      rgba(228, 236, 255, 0.18);
+
+  --status-good:    #38f7a3;
+  --status-warn:    #ffb547;
+  --status-bad:     #ff4d6d;
+
+  /* Geometry tokens — kept tight and consistent so all widgets align. */
+  --radius-card:    6px;
+  --radius-chip:    4px;
+  --space-tight:    8px;
+  --space-cozy:     12px;
+  --space-loose:    18px;
+  --hairline:       1px;
+
+  /* Default palette = dev (Stark cobalt). Body[data-ui-mode] swaps it. */
+  --accent:         #4ea1ff;
+  --accent-strong:  #1f7fff;
+  --accent-soft:    rgba(78, 161, 255, 0.5);
+  --accent-faint:   rgba(78, 161, 255, 0.2);
+  --accent-ghost:   rgba(78, 161, 255, 0.08);
+  --accent-glow:    rgba(78, 161, 255, 0.5);
+  --accent-glow-strong: rgba(78, 161, 255, 0.85);
+
+  --panel-border:   rgba(78, 161, 255, 0.45);
+  --panel-edge:     rgba(78, 161, 255, 0.85);
+  --panel-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 0 0 1px rgba(78, 161, 255, 0.18),
+    0 8px 22px rgba(0, 8, 24, 0.5);
+  --panel-shadow-hover:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 0 0 1px rgba(78, 161, 255, 0.45),
+    0 0 18px rgba(78, 161, 255, 0.25),
+    0 12px 30px rgba(0, 8, 24, 0.7);
+
+  /* Rival ghost — dimmed version of the OTHER mode's accent, used in the
+     mode toggle and any "would switch to" affordance. */
+  --rival:          #e62222;
+  --rival-soft:     rgba(230, 34, 34, 0.35);
+}
+
+body[data-ui-mode='gamer'] {
+  --accent:         #e62222;
+  --accent-strong:  #d91616;
+  --accent-soft:    rgba(230, 34, 34, 0.35);
+  --accent-faint:   rgba(230, 34, 34, 0.15);
+  --accent-ghost:   rgba(230, 34, 34, 0.06);
+  --accent-glow:    rgba(230, 34, 34, 0.4);
+  --accent-glow-strong: rgba(230, 34, 34, 0.75);
+
+  --panel-border:   rgba(230, 34, 34, 0.32);
+  --panel-edge:     rgba(230, 34, 34, 0.7);
+  --panel-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 0 0 1px rgba(230, 34, 34, 0.12),
+    0 8px 24px rgba(10, 0, 0, 0.7);
+  --panel-shadow-hover:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 0 0 1px rgba(230, 34, 34, 0.38),
+    0 0 20px rgba(230, 34, 34, 0.2),
+    0 12px 32px rgba(10, 0, 0, 0.85);
+
+  --rival:          #4ea1ff;
+  --rival-soft:     rgba(78, 161, 255, 0.4);
+}
+
+/* Smooth transitions only on color-bearing properties. */
+:root,
+body[data-ui-mode] {
+  transition:
+    --accent 220ms ease,
+    --accent-strong 220ms ease,
+    --accent-glow 220ms ease,
+    --panel-border 220ms ease;
+}
+
+/*
+ * Beveled-corner card. Body stays near-black; accent appears on the
+ * border, the chamfer cut, the dot, and the title only.
+ */
+.hud-card {
+  background: var(--panel-bg);
+  border: var(--hairline) solid var(--panel-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-cozy) calc(var(--space-cozy) + 2px);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  /* Chamfer top-right + bottom-left for the Stark HUD silhouette. */
+  clip-path: polygon(
+    0 0,
+    calc(100% - 14px) 0,
+    100% 14px,
+    100% 100%,
+    14px 100%,
+    0 calc(100% - 14px)
+  );
+  transition:
+    border-color 220ms ease,
+    background 220ms ease,
+    box-shadow 220ms ease,
+    transform 180ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  box-shadow: var(--panel-shadow);
+}
+
+/*
+ * Hover lift — darken the card slightly, brighten the border, and pop
+ * the panel ~3px outward with a stronger glow. Only fires on
+ * non-touch devices via @media (hover: hover) so mobile doesn't get
+ * stuck-hover artifacts.
+ */
+@media (hover: hover) {
+  .hud-card:hover {
+    background: var(--panel-bg-hover);
+    border-color: var(--accent);
+    box-shadow: var(--panel-shadow-hover);
+    transform: translateY(-2px);
+  }
+  .hud-card:hover::after {
+    opacity: 1;
+  }
+}
+
+.hud-card::after {
+  /* Inner accent edge highlights the chamfered corners. */
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(135deg, var(--panel-edge) 0 1px, transparent 1px) top right / 14px 14px no-repeat,
+    linear-gradient(-45deg, var(--panel-edge) 0 1px, transparent 1px) bottom left / 14px 14px no-repeat;
+  opacity: 0.85;
+  mix-blend-mode: screen;
+  transition: opacity 220ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-card { transition: border-color 220ms ease, background 220ms ease; }
+  .hud-card:hover { transform: none; }
+}
+
+.hud-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-tight);
+  margin-bottom: var(--space-tight);
+  position: relative;
+  z-index: 1;
+}
+
+.hud-card-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent-glow);
+}
+
+.hud-card-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 2.8px;
+  flex: 1;
+  color: var(--accent);
+  text-shadow: 0 0 6px var(--accent-glow);
+}
+
+.hud-card-sub {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.66rem;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.hud-card-empty {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.82rem;
+  color: var(--ink-faint);
+  letter-spacing: 1.5px;
+  text-align: center;
+  padding: var(--space-cozy) 0;
+}

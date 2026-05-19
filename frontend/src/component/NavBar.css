@@ -1,71 +1,67 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap');
-
 .navbar-container {
   width: 100%;
-  max-width: 1200px;
-  height: 70px;
+  max-width: 1280px;
+  height: 52px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 0 40px;
+  padding: 0 24px;
   z-index: 50;
-
-  /* Liquid Glass Effect */
-  background: rgba(15, 20, 35, 0.4);
-  backdrop-filter: blur(16px) saturate(200%);
-  -webkit-backdrop-filter: blur(16px) saturate(200%);
-  border: 1px solid rgba(0, 255, 225, 0.2);
-  border-bottom: 2px solid rgba(0, 255, 225, 0.5); /* Glowing edge */
-  border-radius: 40px;
-  box-shadow: 0 8px 32px 0 rgba(0, 10, 20, 0.6),
-              inset 0 0 15px rgba(0, 255, 225, 0.1);
-  transition: all 0.4s ease;
+  background: linear-gradient(180deg, rgba(8, 18, 36, 0.65), rgba(4, 10, 22, 0.78));
+  border: 1px solid var(--panel-border);
+  border-bottom: 2px solid var(--panel-edge);
+  border-radius: 26px;
+  /* Match the chamfered card silhouette so the nav reads as the same family. */
+  clip-path: polygon(
+    0 0,
+    calc(100% - 18px) 0,
+    100% 18px,
+    100% 100%,
+    18px 100%,
+    0 calc(100% - 18px)
+  );
+  transition: border-color 220ms ease, box-shadow 220ms ease;
   pointer-events: auto;
-}
-
-.navbar-container:hover {
-  box-shadow: 0 8px 32px 0 rgba(0, 255, 225, 0.15),
-              inset 0 0 10px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 6px 24px rgba(0, 4, 12, 0.55);
 }
 
 .navbar-brand {
   font-family: 'Orbitron', sans-serif;
-  font-size: 1.8rem;
+  font-size: 1.2rem;
   font-weight: 700;
-  color: #fff;
-  letter-spacing: 3px;
+  color: var(--ink);
+  letter-spacing: 4px;
   cursor: pointer;
-  text-shadow: 0 0 8px rgba(0, 255, 225, 0.6),
-               0 0 20px rgba(0, 255, 225, 0.3);
-  transition: all 0.3s ease;
+  text-shadow: 0 0 6px var(--accent-glow);
+  transition: text-shadow 220ms ease;
+  flex-shrink: 0;
 }
 
-.navbar-brand:hover {
-  text-shadow: 0 0 15px rgba(0, 255, 225, 1),
-               0 0 30px rgba(0, 255, 225, 0.8),
-               0 0 50px rgba(0, 150, 255, 0.5);
+.navbar-mode {
+  display: flex;
+  align-items: center;
+  margin-left: 28px;
+  margin-right: auto;
 }
 
 .navbar-links {
   display: flex;
   list-style: none;
-  gap: 40px;
+  gap: 28px;
   margin: 0;
   padding: 0;
 }
 
 .navbar-links li a {
   font-family: 'Rajdhani', sans-serif;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--ink-soft);
   text-decoration: none;
-  font-size: 1.15rem;
+  font-size: 0.95rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 2px;
-  transition: all 0.3s ease;
+  transition: color 200ms ease, text-shadow 200ms ease;
   position: relative;
-  display: inline-block;
-  padding-bottom: 5px;
+  padding-bottom: 4px;
 }
 
 .navbar-links li a::before {
@@ -74,115 +70,105 @@
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 0%;
-  height: 2px;
-  background: #00ffe1;
-  transition: width 0.3s ease;
-  box-shadow: 0 0 10px #00ffe1;
+  width: 0;
+  height: 1px;
+  background: var(--accent);
+  transition: width 220ms ease;
+  box-shadow: 0 0 6px var(--accent-glow);
 }
 
 .navbar-links li a:hover {
-  color: #ffffff;
-  text-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
+  color: var(--ink);
+  text-shadow: 0 0 6px var(--accent-glow);
 }
 
-.navbar-links li a:hover::before {
-  width: 100%;
+.navbar-links li a:hover::before { width: 100%; }
+
+.navbar-actions {
+  margin-left: 24px;
 }
 
 .navbar-actions .btn-futuristic {
-  font-family: 'Rajdhani', sans-serif;
-  background: linear-gradient(135deg, rgba(0, 255, 225, 0.1), rgba(0, 102, 255, 0.1));
-  color: #fff;
-  border: 1px solid rgba(0, 255, 225, 0.6);
-  padding: 8px 25px;
-  border-radius: 20px;
-  font-size: 1.1rem;
+  font-family: 'Orbitron', sans-serif;
+  background: var(--accent-faint);
+  color: var(--accent);
+  border: 1px solid var(--accent-soft);
+  padding: 6px 18px;
+  border-radius: 16px;
+  font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1.5px;
+  letter-spacing: 2px;
   cursor: pointer;
-  backdrop-filter: blur(5px);
-  transition: all 0.3s ease;
-  box-shadow: 0 0 10px rgba(0, 255, 225, 0.2);
+  transition: background 200ms ease, border-color 200ms ease;
 }
 
 .navbar-actions .btn-futuristic:hover {
-  background: linear-gradient(135deg, rgba(0, 255, 225, 0.3), rgba(0, 102, 255, 0.3));
-  border-color: #00ffe1;
-  color: #fff;
-  box-shadow: 0 0 15px rgba(0, 255, 225, 0.5),
-              0 0 30px rgba(0, 102, 255, 0.4);
-  transform: translateY(-2px);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: #03060d;
 }
 
-/* Settings Dropdown */
 .settings-dropdown {
   position: absolute;
-  top: 35px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 220px;
-  background: rgba(15, 20, 35, 0.85);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(0, 255, 225, 0.3);
-  border-radius: 15px;
-  padding: 20px;
-  box-shadow: 0 8px 32px 0 rgba(0, 10, 20, 0.6), inset 0 0 10px rgba(0, 255, 225, 0.1);
+  top: 50px;
+  right: 16px;
+  width: 240px;
+  background: rgba(2, 6, 14, 0.92);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--accent-soft);
+  border-radius: 8px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 12px;
   z-index: 10000;
-  animation: slideDown 0.3s ease forwards;
-}
-
-@keyframes slideDown {
-  from { opacity: 0; transform: translate(-50%, -10px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
+  box-shadow: 0 12px 32px rgba(0, 4, 12, 0.7);
 }
 
 .settings-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   text-align: left;
 }
 
 .settings-section span {
-  font-family: 'Rajdhani', sans-serif;
-  color: #fff;
-  font-size: 0.95rem;
+  font-family: 'Orbitron', sans-serif;
+  color: var(--ink-soft);
+  font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
 }
 
 .settings-section input[type="range"] {
   width: 100%;
-  accent-color: #00ffe1;
-  background: rgba(255, 255, 255, 0.1);
-  height: 6px;
-  border-radius: 3px;
-  outline: none;
+  accent-color: var(--accent);
+  height: 4px;
   cursor: pointer;
 }
 
 .settings-section input[type="color"] {
   width: 100%;
-  height: 35px;
+  height: 30px;
   border: none;
-  border-radius: 5px;
+  border-radius: 4px;
   background: transparent;
   cursor: pointer;
 }
 
 .save-btn {
-  border-color: #ff0055 !important;
-  box-shadow: 0 0 15px rgba(255, 0, 85, 0.4) !important;
+  border-color: var(--status-bad) !important;
+  color: var(--status-bad) !important;
   animation: pulse 1.5s infinite;
 }
 
 @keyframes pulse {
-  0% { box-shadow: 0 0 10px rgba(255, 0, 85, 0.4); }
-  50% { box-shadow: 0 0 20px rgba(255, 0, 85, 0.8); }
-  100% { box-shadow: 0 0 10px rgba(255, 0, 85, 0.4); }
+  0%, 100% { box-shadow: 0 0 6px rgba(255, 77, 109, 0.4); }
+  50%      { box-shadow: 0 0 14px rgba(255, 77, 109, 0.8); }
+}
+
+@media (max-width: 1100px) {
+  .navbar-mode { margin-left: 16px; }
+  .navbar-links { gap: 18px; }
 }

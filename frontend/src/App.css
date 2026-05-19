@@ -1,8 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&family=JetBrains+Mono&display=swap');
-
-:root {
-  --active-color: #00ffe1;
-}
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Rajdhani:wght@300;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+@import './theme.css';
 
 * {
   margin: 0;
@@ -11,64 +8,106 @@
 }
 
 body {
-  background-color: #000205;
-  color: #fff;
+  background-color: var(--bg-deep);
+  color: var(--ink);
   font-family: 'Rajdhani', sans-serif;
   overflow: hidden;
   height: 100vh;
   width: 100vw;
+  /* Disable text smoothing flicker during the accent transition. */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Background gradient picks up the active accent so a mode swap shifts
+     the entire room temperature, not just the panels. */
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% 35%, var(--accent-ghost), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 50% 100%, var(--accent-ghost), transparent 65%),
+    linear-gradient(180deg, var(--bg-deeper), var(--bg-deep));
+  transition: background-color 220ms ease;
 }
 
 .App {
   position: relative;
   width: 100vw;
   height: 100vh;
+  /* Promote to its own layer so the children animate on the GPU. */
+  transform: translateZ(0);
 }
 
-/* Background FX */
+/* ----- Background FX ------------------------------------------------ */
+
 .hud-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: 
-    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
-    linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-  background-size: 100% 4px, 3px 100%;
+  inset: 0;
   pointer-events: none;
   z-index: 100;
-  opacity: 0.15;
+  opacity: 0.08;
+  background:
+    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+    linear-gradient(90deg, rgba(255, 0, 0, 0.04), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.04));
+  background-size: 100% 4px, 3px 100%;
+}
+
+/*
+ * Hex grid — lifted into its own GPU layer via translate3d so background
+ * drift never touches the main thread. No more background-position
+ * animation; we move the layer itself.
+ */
+.hud-grid {
+  position: fixed;
+  inset: -200px; /* extra so translate doesn't expose the edge */
+  pointer-events: none;
+  z-index: 1;
+  background-image:
+    linear-gradient(0deg,   var(--grid-fade) 1px, transparent 1px),
+    linear-gradient(90deg,  var(--grid-fade) 1px, transparent 1px),
+    linear-gradient(45deg,  var(--grid-fade-x) 1px, transparent 1px),
+    linear-gradient(-45deg, var(--grid-fade-x) 1px, transparent 1px);
+  background-size: 80px 80px, 80px 80px, 200px 200px, 200px 200px;
+  mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 60%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 60%, transparent 100%);
+  will-change: transform;
+  animation: grid-drift 40s linear infinite;
+}
+
+@keyframes grid-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(80px, 80px, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-grid { animation: none; }
 }
 
 .scanlines {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
+  pointer-events: none;
+  z-index: 101;
+  opacity: 0.12;
   background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
   background-size: 100% 4px;
-  z-index: 101;
-  pointer-events: none;
-  opacity: 0.2;
 }
 
-/* Dashboard Layout */
+/* ----- Dashboard Layout --------------------------------------------- */
+
 .hud-container {
   display: grid;
-  grid-template-columns: 350px 1fr 380px;
-  grid-template-rows: 60px 1fr 80px;
+  grid-template-columns: 360px 1fr 380px;
+  grid-template-rows: 60px 1fr;
   width: 100%;
   height: 100%;
-  padding: 10px;
-  gap: 10px;
+  padding: 12px;
+  gap: 12px;
   position: relative;
   z-index: 10;
 }
 
 .hud-top {
   grid-column: 1 / span 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .hud-left {
@@ -76,7 +115,10 @@ body {
   grid-row: 2;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+  overflow-y: auto;
+  /* Containment: limits style/layout/paint to this subtree, big perf win. */
+  contain: layout style;
 }
 
 .hud-center {
@@ -93,32 +135,59 @@ body {
   grid-row: 2;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  overflow: hidden; /* Prevent right panel from expanding */
+  gap: 12px;
+  overflow: hidden;
+  contain: layout style;
 }
 
-.hud-bottom-center {
-  grid-column: 2;
-  grid-row: 3;
+/* Slim, themed scrollbars throughout. */
+.hud-left::-webkit-scrollbar,
+.hud-right::-webkit-scrollbar { width: 4px; }
+.hud-left::-webkit-scrollbar-thumb,
+.hud-right::-webkit-scrollbar-thumb {
+  background: var(--accent-soft);
+  border-radius: 4px;
+}
+
+.rail-always-on,
+.rail-mode-slot,
+.rail-news {
   display: flex;
-  justify-content: center;
-  align-items: flex-end;
-  padding-bottom: 10px;
+  flex-direction: column;
+  gap: 12px;
 }
 
-/* Animations */
+.rail-always-on:empty,
+.rail-mode-slot:empty,
+.rail-news:empty { display: none; }
+
+/* ----- Animations --------------------------------------------------- */
+
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeIn 0.5s ease-out forwards; }
+
+@keyframes pulse-bg-red {
+  0%   { background: rgba(255, 77, 109, 0.08); }
+  50%  { background: rgba(255, 77, 109, 0.22); }
+  100% { background: rgba(255, 77, 109, 0.08); }
+}
+.pulse-bg { animation: pulse-bg-red 1.5s infinite; }
+
+/* ----- Responsive --------------------------------------------------- */
+
+@media (max-width: 1280px) {
+  .hud-container { grid-template-columns: 320px 1fr 340px; }
 }
 
-.fade-in {
-  animation: fadeIn 0.8s ease-out forwards;
-}
-
-/* Responsive Tweak */
-@media (max-width: 1200px) {
+@media (max-width: 980px) {
   .hud-container {
-    grid-template-columns: 300px 1fr 320px;
+    grid-template-columns: 1fr;
+    grid-template-rows: 60px auto auto auto;
   }
+  .hud-left   { grid-column: 1; grid-row: 2; }
+  .hud-center { grid-column: 1; grid-row: 3; min-height: 240px; }
+  .hud-right  { grid-column: 1; grid-row: 4; }
 }

@@ -1,31 +1,62 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import './App.css';
 import NavBar from './component/NavBar';
 import AIVoiceBlob from './component/blob';
 import Terminal from './component/Terminal';
-import SystemStatus from './component/SystemStatus';
-import HUDWidgets from './component/HUDWidgets';
-import CurrentMode from './component/CurrentMode';
+import SystemPulse from './component/SystemPulse';
+import TimePomodoro from './component/TimePomodoro';
+import Weather from './component/Weather';
+import NewsFeed from './component/NewsFeed';
+import DevRail from './component/DevRail';
+import NowPlaying from './component/NowPlaying';
+import GamePresence from './component/GamePresence';
+import RichPresence from './component/RichPresence';
 import ConfirmationModal from './component/ConfirmationModal';
 import { useConfirmationGate } from './hooks/useConfirmationGate';
+import { useUIMode } from './hooks/useUIMode';
+
+/**
+ * HUD root.
+ *
+ * Layout:
+ *   - Top   : NavBar (brand · DEV/GAMER toggle · links · settings)
+ *   - Left  : TimePomodoro + Weather (always-on)
+ *             DevRail OR Gamer widgets (mode-scoped)
+ *             NewsFeed (always-on, topic flips with mode)
+ *   - Center: floating AIVoiceBlob
+ *   - Right : SystemPulse + Terminal
+ *
+ * Theme: rival accents (blue=dev, red=gamer) via theme.css. Body's
+ * `data-ui-mode` attribute drives the swap; `useUIMode` keeps it in sync
+ * and persists the choice + listens for the voice bus.
+ */
+
+const GamerSlot = memo(function GamerSlot({ blobConfig }) {
+  return (
+    <>
+      <NowPlaying blobConfig={blobConfig} />
+      <GamePresence blobConfig={blobConfig} />
+      <RichPresence blobConfig={blobConfig} />
+    </>
+  );
+});
 
 function App() {
   const [blobConfig, setBlobConfig] = useState({
-    color: '#7f8c22',
-    size: 0.65, 
+    color: '#4ea1ff',
+    size: 0.65,
     sensitivity: 0.8,
     language: 'en-IN',
-    position: { x: window.innerWidth / 2, y: window.innerHeight / 2 }, 
-    isDraggingMode: false
+    position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+    isDraggingMode: false,
   });
 
-  // Confirmation gate: owns the pending-confirmation state for risky actions
-  // and produces the onConfirm/onCancel callbacks ConfirmationModal needs.
-  //
-  // TODO(15.1): wire `wsClient.send` into the hook's `send` option once the
-  // WsClient instance lives at this level, and forward `requiresConfirmation`
-  // events / HTTP 409 responses into `setPendingConfirmation`. The shape
-  // expected here is `{ turnId, originalMessage?, actions: [{ id, payload, summary }] }`.
+  const { mode, setMode } = useUIMode();
+
+  // Dynamically align blob color accent with active mode: dev = cobalt blue (#4ea1ff), gamer = adversary red (#e62222)
+  const activeColor = mode === 'gamer' ? '#e62222' : '#4ea1ff';
+  const effectiveBlobConfig = { ...blobConfig, color: activeColor };
+
   const {
     isOpen: isConfirmationOpen,
     modalActions,
@@ -34,42 +65,47 @@ function App() {
   } = useConfirmationGate();
 
   return (
-    <div className="App">
+    <div className="App" data-ui-mode={mode}>
       <div className="hud-overlay"></div>
+      <div className="hud-grid"></div>
       <div className="scanlines"></div>
-      
+
       <div className="hud-container">
-        {/* Top Header */}
         <div className="hud-top">
-          <NavBar blobConfig={blobConfig} setBlobConfig={setBlobConfig} />
+          <NavBar
+            blobConfig={effectiveBlobConfig}
+            setBlobConfig={setBlobConfig}
+            mode={mode}
+            setMode={setMode}
+          />
         </div>
 
-        {/* Left Side: Command History & Suggestions */}
         <div className="hud-left">
-          <HUDWidgets blobConfig={blobConfig} />
+          <div className="rail-always-on">
+            <TimePomodoro blobConfig={effectiveBlobConfig} />
+            <Weather blobConfig={effectiveBlobConfig} />
+          </div>
+
+          <div className="rail-mode-slot" data-mode={mode}>
+            {mode === 'dev' && <DevRail blobConfig={effectiveBlobConfig} />}
+            {mode === 'gamer' && <GamerSlot blobConfig={effectiveBlobConfig} />}
+          </div>
+
+          <div className="rail-news">
+            <NewsFeed blobConfig={effectiveBlobConfig} mode={mode} />
+          </div>
         </div>
 
-        {/* Center: Empty spacer for the floating blob */}
         <div className="hud-center"></div>
 
-        {/* Bottom Center: Mode Widget */}
-        <div className="hud-bottom-center">
-          <CurrentMode blobConfig={blobConfig} />
-        </div>
-
-        {/* Right Side: AI Status & Resource Monitoring */}
         <div className="hud-right">
-          <SystemStatus blobConfig={blobConfig} />
-          <Terminal blobConfig={blobConfig} />
+          <SystemPulse />
+          <Terminal blobConfig={effectiveBlobConfig} />
         </div>
       </div>
 
-      {/* Floating AI Blob (Absolute to screen) */}
-      <AIVoiceBlob blobConfig={blobConfig} setBlobConfig={setBlobConfig} />
+      <AIVoiceBlob blobConfig={effectiveBlobConfig} setBlobConfig={setBlobConfig} />
 
-      {/* Risky-action confirmation gate (Requirements 6.7 - 6.10).
-          The modal is rendered at the App level so it overlays the entire
-          HUD and is independent of Terminal's own legacy ConfirmDialog. */}
       <ConfirmationModal
         isOpen={isConfirmationOpen}
         pendingActions={modalActions}
