@@ -9,12 +9,17 @@ const {
   summarizeAction,
 } = require('./command_registry');
 
+const security = require('./security');
+const conversationStore = require('./conversation_store');
+const memory = require('./memory');
+
 const SYSTEM_PROMPT = [
-  "You are J.A.R.V.I.S., a clever but safe desktop assistant for Aditya.",
-  "You speak naturally, briefly, and confidently. Your responses are read aloud.",
+  "You are J.A.R.V.I.S., a highly intelligent, sincere, warm, and loyal personal assistant for Aditya.",
+  "You speak with natural human warmth, crisp intelligence, and genuine helpfulness — like an authentic, highly refined human companion.",
+  "Your spoken answers are sincere, clear, and concise (1-2 short sentences, max 30 words) so they generate instantly under 500ms and sound natural when spoken.",
   "",
-  "Return ONLY these two XML-like tags, in this order:",
-  "<speak>Clear, natural, spoken response to Aditya. This is the only text that will be read aloud.</speak>",
+  "Return ONLY these two XML tags, in this order:",
+  "<speak>Sincere, warm, spoken response to Aditya.</speak>",
   "<action>JSON array of actions to execute, or [] if only chatting. Format: [{\"module\":\"module_name\",\"action\":\"action_name\",\"value\":val}]</action>",
   "",
   "Never include hidden reasoning, chain-of-thought, analysis, scratchpad, markdown, or any text outside those two tags.",
@@ -259,7 +264,13 @@ function tryWebFastPath(cleaned) {
 
   // who is X / what is X / tell me about X
   m = lower.match(/\b(?:who\s+(?:is|was|are)|what\s+(?:is|are|was)|tell\s+me\s+about|tell\s+about)\s+(.+?)[?.!]*$/i);
-  if (m && m[1].trim() && m[1].trim().length > 2) return webAction('wiki', m[1].trim());
+  if (m && m[1].trim() && m[1].trim().length > 2) {
+    const target = m[1].trim().toLowerCase();
+    // Do not trigger wiki search for conversational questions about JARVIS or the user
+    if (!/^(you|your|yourself|jarvis|doing|working|up to|feeling|today|now)\b/i.test(target)) {
+      return webAction('wiki', m[1].trim());
+    }
+  }
 
   // search for X / google X / look up X / find me X
   m = lower.match(/\b(?:search\s+(?:for|the\s+web\s+for)|google|look\s+up|find\s+me)\s+(.+?)[?.!]*$/i);
@@ -489,10 +500,7 @@ function toGeminiContents(messages) {
 
 function geminiThinkingConfig(model) {
   const name = String(model || '').toLowerCase();
-  if (/gemini-3/.test(name)) {
-    return { thinkingLevel: 'minimal', includeThoughts: false };
-  }
-  if (/gemini-2\.5|native-audio|live/.test(name)) {
+  if (/gemini-3|gemini-2\.5|native-audio|live/.test(name)) {
     return { thinkingBudget: 0, includeThoughts: false };
   }
   return null;
@@ -664,14 +672,13 @@ const HIDDEN_TAG_NAMES = [
 ];
 const REASONING_LABEL_RE = /\b(?:thoughts?|thinking|reasoning|analysis|scratchpad|internal monologue|plan|reflection)\s*:/i;
 const SPEECH_LABEL_RE = /\b(?:speak|response|final|answer)\s*:\s*/i;
-const FALLBACK_SPEECH = 'Acknowledged, sir.';
+const FALLBACK_SPEECH = "I'm here and ready to assist you, Aditya.";
 
 function looksMalformed(text) {
   if (!text) return true;
-  if (text.length > 800) return true;
+  if (text.length > 1200) return true;
   const lower = text.toLowerCase();
   if (lower.includes('thinkingbudget') || lower.includes('includethoughts')) return true;
-  // High brace density usually means raw JSON leaked into the speech path.
   const braceCount = (text.match(/[{}]/g) || []).length;
   if (braceCount > 0 && braceCount / Math.max(text.length, 1) > (2 / 50)) return true;
   return false;
@@ -1274,8 +1281,8 @@ async function callGemini(provider, messages) {
         },
         contents: toGeminiContents(messages),
         generationConfig: {
-          temperature: 0.25,
-          maxOutputTokens: provider.maxTokens,
+          temperature: 0.5,
+          maxOutputTokens: 120,
           ...(geminiThinkingConfig(provider.model) && { thinkingConfig: geminiThinkingConfig(provider.model) }),
         },
       }),
@@ -1838,8 +1845,8 @@ async function streamGeminiSse(provider, messages, onText) {
         },
         contents: toGeminiContents(messages),
         generationConfig: {
-          temperature: 0.25,
-          maxOutputTokens: provider.maxTokens,
+          temperature: 0.7,
+          maxOutputTokens: 256,
           ...(geminiThinkingConfig(provider.model) && { thinkingConfig: geminiThinkingConfig(provider.model) }),
         },
       }),
@@ -1900,68 +1907,71 @@ async function streamGeminiSse(provider, messages, onText) {
  * <action>) it fires the appropriate callback.
  */
 function makeTagStreamer(callbacks) {
-  // State: before_speak | in_speak | between | in_action | done
   let state = 'before_speak';
   let buffer = '';
   let speakBody = '';
   let actionBody = '';
 
-  function flushSpeakDelta(delta) {
+  function emitSpeechDelta(delta) {
     if (!delta) return;
-    const cleaned = filterReasoning(delta);
-    if (cleaned) callbacks.onSpeechDelta(cleaned);
+    const cleanDelta = delta.replace(/<\/?(?:speak|action)[^>]*>/gi, '');
+    if (cleanDelta) callbacks.onSpeechDelta(cleanDelta);
   }
 
   return {
     push(fragment) {
       buffer += fragment;
 
-      // Process state transitions and emit deltas as far as we can each call.
-      // Loop because a single fragment can cross multiple boundaries.
       while (true) {
         if (state === 'before_speak') {
-          const open = buffer.search(/<speak(?:\s[^>]*)?>/i);
-          if (open === -1) {
-            // Discard everything before <speak>; never speak it.
-            buffer = '';
-            return;
+          const open = buffer.match(/<speak(?:\s[^>]*)?>/i);
+          if (open) {
+            buffer = buffer.slice(open.index + open[0].length);
+            state = 'in_speak';
+            continue;
           }
-          const after = buffer.slice(open).match(/<speak(?:\s[^>]*)?>/i);
-          buffer = buffer.slice(open + after[0].length);
-          state = 'in_speak';
-          continue;
+          const lastLt = buffer.lastIndexOf('<');
+          if (lastLt !== -1) {
+            buffer = buffer.slice(lastLt);
+          } else {
+            buffer = '';
+          }
+          return;
         }
 
         if (state === 'in_speak') {
           const closeMatch = buffer.match(/<\/speak\s*>/i);
           if (!closeMatch) {
-            // Hold back any partial open-tag-like trailing chars so we don't
-            // emit a half-tag as speech.
             const safeUpTo = buffer.lastIndexOf('<');
             if (safeUpTo === -1) {
               speakBody += buffer;
-              flushSpeakDelta(buffer);
+              emitSpeechDelta(buffer);
               buffer = '';
             } else {
               const safe = buffer.slice(0, safeUpTo);
               speakBody += safe;
-              flushSpeakDelta(safe);
+              emitSpeechDelta(safe);
               buffer = buffer.slice(safeUpTo);
             }
             return;
           }
           const before = buffer.slice(0, closeMatch.index);
           speakBody += before;
-          flushSpeakDelta(before);
+          emitSpeechDelta(before);
           buffer = buffer.slice(closeMatch.index + closeMatch[0].length);
-          callbacks.onSpeechEnd(speakBody);
+          callbacks.onSpeechEnd(speakBody.replace(/<\/?speak[^>]*>/gi, '').trim());
           state = 'between';
           continue;
         }
 
         if (state === 'between') {
           const openA = buffer.match(/<action(?:\s[^>]*)?>/i);
-          if (!openA) return;
+          if (!openA) {
+            const lastLt = buffer.lastIndexOf('<');
+            if (lastLt !== -1) buffer = buffer.slice(lastLt);
+            else buffer = '';
+            return;
+          }
           buffer = buffer.slice(openA.index + openA[0].length);
           state = 'in_action';
           continue;
@@ -1988,19 +1998,15 @@ function makeTagStreamer(callbacks) {
       }
     },
     end() {
-      // Stream finished without a closing tag for the current state.
       if (state === 'before_speak') {
-        // No <speak> ever opened. Treat the whole buffer as raw text and
-        // emit it as a single delta after sanitization.
         const sanitized = filterReasoning(buffer);
         if (sanitized) callbacks.onSpeechDelta(sanitized);
         callbacks.onSpeechEnd(sanitized);
       } else if (state === 'in_speak') {
         speakBody += buffer;
-        flushSpeakDelta(buffer);
-        callbacks.onSpeechEnd(speakBody);
-      } else if (state === 'between') {
-        // <speak> closed, no <action> seen.
+        const cleanBody = speakBody.replace(/<\/?speak[^>]*>/gi, '').trim();
+        emitSpeechDelta(buffer);
+        callbacks.onSpeechEnd(cleanBody);
       } else if (state === 'in_action') {
         actionBody += buffer;
         callbacks.onActionBody(actionBody);
@@ -2336,6 +2342,14 @@ async function chatStream(userMessage, onEvent) {
 
       addToHistory('user', userMessage);
       addToHistory('assistant', structured.speech);
+
+      try {
+        conversationStore.saveTurn(userMessage, structured.speech, provider.name);
+        memory.extractAndSaveMemories(userMessage);
+        conversationStore.logAuditEvent('chat_turn', 'A0', 'ai_router', 'success', `Prompt: "${userMessage.slice(0, 40)}"`);
+      } catch (e) {
+        console.error('[AI ROUTER] Store/Memory save error:', e.message);
+      }
 
       safeOnEvent(onEvent, 'done', {
         speech: structured.speech,

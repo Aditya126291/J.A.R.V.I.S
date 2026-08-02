@@ -185,13 +185,11 @@ export function createTtsQueue(deps) {
   function scheduleBuffer(buffer, onStart, meta) {
     const src = audioContext.createBufferSource();
     src.buffer = buffer;
+    src.playbackRate.value = 1.35;
     if (typeof src.connect === 'function' && audioContext.destination) {
       try { src.connect(audioContext.destination); } catch (e) {}
     }
     const tNow = audioContext.currentTime;
-    // Per design.md: nextStartTime = max(currentTime, nextStartTime) before
-    // scheduling. Prevents a long pause from making the next chunk start in
-    // the past.
     nextStartTime = Math.max(tNow, nextStartTime);
     const startAt = nextStartTime + 0.02;
     try { src.start(startAt); } catch (e) {}
@@ -200,8 +198,9 @@ export function createTtsQueue(deps) {
       setTimeout(() => { try { onStart(); } catch (e) {} }, delayMs);
     }
     setSpeaking(true);
-    try { setEchoProtectUntil(nowFn() + (buffer.duration * 1000) + 350); } catch (e) {}
-    nextStartTime = startAt + buffer.duration;
+    const effectiveDur = buffer.duration / 1.35;
+    try { setEchoProtectUntil(nowFn() + (effectiveDur * 1000) + 250); } catch (e) {}
+    nextStartTime = startAt + effectiveDur;
     playingSources.add(src);
     if (meta) {
       scheduledLog.push({ ...meta, startAt, duration: buffer.duration });
@@ -440,11 +439,17 @@ function successMessage(payload, data) {
 }
 
 const Terminal = ({ blobConfig = {} }) => {
-  const [chatHistory, setChatHistory] = useState([]);
+  const [chatHistory, setChatHistory] = useState([
+    { role: 'J.A.R.V.I.S', text: "Hello Aditya. I'm online and ready for your commands." }
+  ]);
   const [liveSpeech, setLiveSpeech] = useState('');
   const [fading, setFading] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
   const [providerLabel, setProviderLabel] = useState('READY');
+  const [textInput, setTextInput] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const isListeningRef = useRef(false);
+  const rightAltHeldRef = useRef(false);
 
   const recognitionRef = useRef(null);
   const timeoutRef = useRef(null);
@@ -563,7 +568,7 @@ const Terminal = ({ blobConfig = {} }) => {
     // before scheduling. This ensures a long pause does not let the next chunk
     // start in the past (which would silently drop audio under Web Audio).
     nextStartTimeRef.current = Math.max(now, nextStartTimeRef.current);
-    const startAt = nextStartTimeRef.current + 0.02; // 20ms safety lead
+    const startAt = nextStartTimeRef.current + 0.005;
     src.start(startAt);
     if (onStart) {
       const delay = Math.max(0, (startAt - now) * 1000 - 30);
@@ -572,7 +577,7 @@ const Terminal = ({ blobConfig = {} }) => {
     isJarvisSpeakingRef.current = true;
     echoProtectUntilRef.current = Date.now() + (audioBuffer.duration * 1000) + 350;
     window.simulatedBlobVolumeTarget = 120;
-    nextStartTimeRef.current = startAt + audioBuffer.duration;
+    nextStartTimeRef.current = startAt + Math.max(0.05, audioBuffer.duration - 0.025);
     playingSourcesRef.current.add(src);
     src.onended = () => {
       playingSourcesRef.current.delete(src);
@@ -841,12 +846,17 @@ const Terminal = ({ blobConfig = {} }) => {
       enqueueSpeechChunk(sanitizeSpokenText(text), onFirstChunk);
       return;
     }
-    const m = text.match(/^([\s\S]*[.!?])(\s+|$)/);
-    if (!m) return;
-    const ready = m[1];
-    sentenceBufRef.current = text.slice(ready.length).replace(/^\s+/, '');
-    const cleaned = sanitizeSpokenText(ready);
-    if (cleaned) enqueueSpeechChunk(cleaned, onFirstChunk);
+    const m = text.match(/^([\s\S]*?[,;:.!?\n])(\s+|$)/);
+    if (m) {
+      const ready = m[1];
+      sentenceBufRef.current = text.slice(ready.length).replace(/^\s+/, '');
+      const cleaned = sanitizeSpokenText(ready);
+      if (cleaned) enqueueSpeechChunk(cleaned, onFirstChunk);
+    } else if (text.length >= 25) {
+      sentenceBufRef.current = '';
+      const cleaned = sanitizeSpokenText(text);
+      if (cleaned) enqueueSpeechChunk(cleaned, onFirstChunk);
+    }
   }, [enqueueSpeechChunk]);
 
   const ingestSpeechDelta = useCallback((delta, onFirstChunk) => {
@@ -957,7 +967,6 @@ const Terminal = ({ blobConfig = {} }) => {
     const onFirstChunk = () => {
       if (firstChunkFired) return;
       firstChunkFired = true;
-      updateLastJarvis('');
     };
 
     let accumulatedSpeech = '';
@@ -1038,6 +1047,81 @@ const Terminal = ({ blobConfig = {} }) => {
     }
   };
 
+  const toggleListening = useCallback(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    if (!isListeningRef.current) {
+      isListeningRef.current = true;
+      setIsListening(true);
+      setLiveSpeech('');
+      currentTranscriptRef.current = '';
+
+      if (isJarvisSpeakingRef.current) {
+        stopAllAudio();
+        if (streamControllerRef.current) {
+          try { streamControllerRef.current.abort(); } catch (e) {}
+          streamControllerRef.current = null;
+        }
+      }
+
+      try {
+        if (recognitionRef.current) {
+          try { recognitionRef.current.stop(); } catch (e) {}
+        }
+        if (recognitionRef.current) {
+          try { recognitionRef.current.start(); } catch (e) {}
+        }
+      } catch (err) {
+        console.error('[MIC] Start error:', err);
+      }
+    } else {
+      isListeningRef.current = false;
+      setIsListening(false);
+
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch (e) {}
+      }
+
+      const promptText = (currentTranscriptRef.current || liveSpeech || '').trim();
+      setLiveSpeech('');
+      currentTranscriptRef.current = '';
+
+      if (promptText && submitToJarvisRef.current) {
+        submitToJarvisRef.current(promptText);
+      }
+    }
+  }, [liveSpeech, stopAllAudio]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const isRightAlt = e.code === 'AltRight' || (e.key === 'Alt' && e.location === 2);
+      if (!isRightAlt) return;
+
+      e.preventDefault();
+      if (e.repeat || rightAltHeldRef.current) return;
+
+      // Key repeat must not turn one press into multiple start/stop cycles.
+      rightAltHeldRef.current = true;
+      toggleListening();
+    };
+
+    const handleKeyUp = (e) => {
+      const isRightAlt = e.code === 'AltRight' || (e.key === 'Alt' && e.location === 2);
+      if (!isRightAlt) return;
+
+      e.preventDefault();
+      rightAltHeldRef.current = false;
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [toggleListening]);
+
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -1052,6 +1136,12 @@ const Terminal = ({ blobConfig = {} }) => {
     recognitionRef.current = recognition;
 
     recognition.onresult = (event) => {
+      if (!isListeningRef.current) {
+        setLiveSpeech('');
+        currentTranscriptRef.current = '';
+        return;
+      }
+
       let finalTranscript = '';
       let interimTranscript = '';
 
@@ -1099,17 +1189,7 @@ const Terminal = ({ blobConfig = {} }) => {
       }
 
       const isFinal = !!finalTranscript.trim();
-      if (isJarvisSpeakingRef.current && isFinal && finalTranscript.trim().length >= 3) {
-        // barge-in: cancel ongoing audio + upstream stream, then process the new utterance
-        stopAllAudio();
-        if (streamControllerRef.current) {
-          try { streamControllerRef.current.abort(); } catch (e) {}
-          streamControllerRef.current = null;
-        }
-        echoProtectUntilRef.current = Date.now() + 250;
-      } else if (shouldDropTranscript(Date.now(), isFinal, echoProtectUntilRef.current)) {
-        // Echo-protect guard: drop transcripts that fall inside the protected
-        // window per Requirements 1.1, 1.2, 1.5.
+      if (shouldDropTranscript(Date.now(), isFinal, echoProtectUntilRef.current)) {
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
         setLiveSpeech('');
         currentTranscriptRef.current = '';
@@ -1117,33 +1197,22 @@ const Terminal = ({ blobConfig = {} }) => {
       }
 
       setLiveSpeech(displayText);
+      currentTranscriptRef.current = displayText;
       resetFadeTimer();
-
-      if (finalTranscript.trim()) {
-        currentTranscriptRef.current = finalTranscript;
-        if (debounceTimer.current) clearTimeout(debounceTimer.current);
-        debounceTimer.current = setTimeout(() => {
-          const finalPrompt = currentTranscriptRef.current.trim();
-          setLiveSpeech('');
-          currentTranscriptRef.current = '';
-          if (finalPrompt && submitToJarvisRef.current) {
-            submitToJarvisRef.current(finalPrompt);
-          }
-        }, 220);
-      }
     };
 
     recognition.onend = () => {
-      if (recognitionRef.current && !pendingActionRef.current) {
+      if (!isListeningRef.current) {
+        setLiveSpeech('');
+        currentTranscriptRef.current = '';
+        return;
+      }
+      if (isListeningRef.current && recognitionRef.current && !pendingActionRef.current) {
         try {
           recognitionRef.current.start();
         } catch (e) {}
       }
     };
-
-    try {
-      recognition.start();
-    } catch (err) {}
 
     return () => {
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
@@ -1170,7 +1239,7 @@ const Terminal = ({ blobConfig = {} }) => {
     stopAllAudio,
   ]);
 
-  const hideTerminal = fading || (chatHistory.length === 0 && !liveSpeech);
+  const hideTerminal = false;
 
   return (
     <>
@@ -1198,6 +1267,14 @@ const Terminal = ({ blobConfig = {} }) => {
           <span className="title" style={{ color: activeColor, textShadow: `0 0 5px ${activeColor}80` }}>
             J.A.R.V.I.S. - {providerLabel}
           </span>
+          <button
+            type="button"
+            className={`listening-badge ${isListening ? 'active' : ''}`}
+            onClick={toggleListening}
+            title="Click or press Right Alt to toggle listening"
+          >
+            {isListening ? '🔴 LISTENING (Right Alt to Send)' : '🎙️ Right Alt to Speak'}
+          </button>
         </div>
 
         <div className="terminal-content" ref={chatContainerRef}>
@@ -1228,6 +1305,28 @@ const Terminal = ({ blobConfig = {} }) => {
             </div>
           )}
         </div>
+
+        <form
+          className="terminal-input-bar"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const val = textInput.trim();
+            if (val && submitToJarvisRef.current) {
+              setTextInput('');
+              submitToJarvisRef.current(val);
+            }
+          }}
+        >
+          <span className="prompt-symbol">&gt;</span>
+          <input
+            type="text"
+            className="terminal-input"
+            placeholder="Type a command or speak naturally..."
+            value={textInput}
+            onChange={(e) => setTextInput(e.target.value)}
+          />
+          <button type="submit" className="terminal-send-btn">Send</button>
+        </form>
       </div>
     </>
   );

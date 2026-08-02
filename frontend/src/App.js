@@ -1,61 +1,31 @@
-import React, { useState, memo } from 'react';
+import React, { useState } from 'react';
 import './App.css';
 import NavBar from './component/NavBar';
 import AIVoiceBlob from './component/blob';
 import Terminal from './component/Terminal';
-import SystemPulse from './component/SystemPulse';
-import TimePomodoro from './component/TimePomodoro';
-import Weather from './component/Weather';
-import NewsFeed from './component/NewsFeed';
-import DevRail from './component/DevRail';
-import NowPlaying from './component/NowPlaying';
-import GamePresence from './component/GamePresence';
-import RichPresence from './component/RichPresence';
 import ConfirmationModal from './component/ConfirmationModal';
 import { useConfirmationGate } from './hooks/useConfirmationGate';
-import { useUIMode } from './hooks/useUIMode';
+import MemoryDashboard from './component/MemoryDashboard';
+import ToolsSecurityConsole from './component/ToolsSecurityConsole';
 
-/**
- * HUD root.
- *
- * Layout:
- *   - Top   : NavBar (brand · DEV/GAMER toggle · links · settings)
- *   - Left  : TimePomodoro + Weather (always-on)
- *             DevRail OR Gamer widgets (mode-scoped)
- *             NewsFeed (always-on, topic flips with mode)
- *   - Center: floating AIVoiceBlob
- *   - Right : SystemPulse + Terminal
- *
- * Theme: rival accents (blue=dev, red=gamer) via theme.css. Body's
- * `data-ui-mode` attribute drives the swap; `useUIMode` keeps it in sync
- * and persists the choice + listens for the voice bus.
- */
-
-const GamerSlot = memo(function GamerSlot({ blobConfig }) {
-  return (
-    <>
-      <NowPlaying blobConfig={blobConfig} />
-      <GamePresence blobConfig={blobConfig} />
-      <RichPresence blobConfig={blobConfig} />
-    </>
-  );
-});
+const NAV_ITEMS = [
+  { id: 'chat', icon: '💬', label: 'Assistant' },
+  { id: 'tasks', icon: '⚡', label: 'Tasks' },
+  { id: 'memory', icon: '🧠', label: 'Memory' },
+  { id: 'tools', icon: '🛠️', label: 'Tools' },
+  { id: 'settings', icon: '⚙️', label: 'Settings' },
+];
 
 function App() {
   const [blobConfig, setBlobConfig] = useState({
-    color: '#4ea1ff',
+    color: '#38bdf8',
     size: 0.65,
     sensitivity: 0.8,
     language: 'en-IN',
-    position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+    position: { x: window.innerWidth * 0.75, y: window.innerHeight * 0.18 },
     isDraggingMode: false,
   });
-
-  const { mode, setMode } = useUIMode();
-
-  // Dynamically align blob color accent with active mode: dev = cobalt blue (#4ea1ff), gamer = adversary red (#e62222)
-  const activeColor = mode === 'gamer' ? '#e62222' : '#4ea1ff';
-  const effectiveBlobConfig = { ...blobConfig, color: activeColor };
+  const [activeTab, setActiveTab] = useState('chat');
 
   const {
     isOpen: isConfirmationOpen,
@@ -65,46 +35,105 @@ function App() {
   } = useConfirmationGate();
 
   return (
-    <div className="App" data-ui-mode={mode}>
-      <div className="hud-overlay"></div>
-      <div className="hud-grid"></div>
-      <div className="scanlines"></div>
-
-      <div className="hud-container">
-        <div className="hud-top">
-          <NavBar
-            blobConfig={effectiveBlobConfig}
-            setBlobConfig={setBlobConfig}
-            mode={mode}
-            setMode={setMode}
-          />
-        </div>
-
-        <div className="hud-left">
-          <div className="rail-always-on">
-            <TimePomodoro blobConfig={effectiveBlobConfig} />
-            <Weather blobConfig={effectiveBlobConfig} />
-          </div>
-
-          <div className="rail-mode-slot" data-mode={mode}>
-            {mode === 'dev' && <DevRail blobConfig={effectiveBlobConfig} />}
-            {mode === 'gamer' && <GamerSlot blobConfig={effectiveBlobConfig} />}
-          </div>
-
-          <div className="rail-news">
-            <NewsFeed blobConfig={effectiveBlobConfig} mode={mode} />
+    <div className="app-shell">
+      {/* Clean Sidebar */}
+      <aside className="sidebar" aria-label="JARVIS navigation">
+        <div className="sidebar-brand">
+          <div className="brand-logo">J</div>
+          <div className="brand-text">
+            <strong>J.A.R.V.I.S</strong>
+            <span>CONTROL CENTER</span>
           </div>
         </div>
 
-        <div className="hud-center"></div>
+        <nav className="sidebar-nav">
+          {NAV_ITEMS.map((item) => (
+            <button
+              type="button"
+              key={item.id}
+              className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+              onClick={() => setActiveTab(item.id)}
+            >
+              <span className="nav-icon">{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
 
-        <div className="hud-right">
-          <SystemPulse />
-          <Terminal blobConfig={effectiveBlobConfig} />
+        <div className="sidebar-footer">
+          <span className="status-dot" />
+          <div className="status-info">
+            <strong>ONLINE</strong>
+            <span>SYSTEM READY</span>
+          </div>
         </div>
-      </div>
+      </aside>
 
-      <AIVoiceBlob blobConfig={effectiveBlobConfig} setBlobConfig={setBlobConfig} />
+      {/* Main Workspace */}
+      <section className="workspace">
+        <header className="topbar">
+          <div className="topbar-title-block">
+            <span className="topbar-eyebrow">SYSTEM / {activeTab.toUpperCase()}</span>
+            <h1 className="topbar-title">
+              {activeTab === 'chat' && 'Assistant Console'}
+              {activeTab === 'tasks' && 'Active Tasks & Queue'}
+              {activeTab === 'memory' && 'Memory & Context'}
+              {activeTab === 'tools' && 'Registered Capabilities'}
+              {activeTab === 'settings' && 'System Settings'}
+            </h1>
+          </div>
+          <div className="topbar-controls">
+            <span className="hotkey-hint">Right Alt to Speak</span>
+            <NavBar
+              blobConfig={blobConfig}
+              setBlobConfig={setBlobConfig}
+            />
+          </div>
+        </header>
+
+        <main className="workspace-body">
+          {activeTab === 'chat' && (
+            <div className="chat-container">
+              <div className="chat-header-banner">
+                <div className="banner-left">
+                  <span className="live-badge">● LIVE STREAM</span>
+                  <h2>Voice & Command Interface</h2>
+                </div>
+                <div className="banner-right">
+                  <span className="ready-indicator">Ready for Input</span>
+                </div>
+              </div>
+              <div className="terminal-wrapper">
+                <Terminal blobConfig={blobConfig} />
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'tasks' && (
+            <div className="panel-card">
+              <h3>Active Tasks</h3>
+              <p className="panel-muted">No background tasks currently running.</p>
+            </div>
+          )}
+
+          {activeTab === 'memory' && (
+            <MemoryDashboard />
+          )}
+
+          {activeTab === 'tools' && (
+            <ToolsSecurityConsole />
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="panel-card">
+              <h3>System Settings</h3>
+              <p className="panel-muted">Backend connected on port 5000. Active model: Gemini 2.5 Flash.</p>
+            </div>
+          )}
+        </main>
+      </section>
+
+      <AIVoiceBlob blobConfig={blobConfig} setBlobConfig={setBlobConfig} />
 
       <ConfirmationModal
         isOpen={isConfirmationOpen}

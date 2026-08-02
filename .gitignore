@@ -2,6 +2,14 @@
 node_modules/
 jspm_packages/
 
+# Database & SQLite runtime files
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-shm
+*.db-wal
+
 # Environment files
 .env
 .env.local
@@ -16,6 +24,16 @@ dist/
 build/
 out/
 .next/
+.vite/
+target/
+
+# Generated knowledge graph
+graphify-out/
+
+# Tauri auto-generated (if project evolves)
+src-tauri/gen/
+src-tauri/target/
+src-tauri/.env
 
 # Debug logs
 npm-debug.log*
@@ -28,6 +46,23 @@ yarn-error.log*
 .idea/
 .DS_Store
 Thumbs.db
+Desktop.ini
+*.tmp
+*.temp
+*.bak
+*.vbs
+
+# Scratch test scripts
+test_*.js
 
 # Local TTS cache (rendered MP3 buffers, hash-keyed, regenerable)
 backend/cache/
+
+# Kiro runtime state (auto-regenerated)
+.kiro/
+
+# Codex metadata
+.codex/
+
+# Runtime data files
+backend/data/

@@ -17,6 +17,9 @@ const { handleNetworkCommand } = require('./modules/network');
 const { handleWorkspaceCommand } = require('./modules/workspace');
 const { handleMessageCommand } = require('./modules/message');
 const { handleWebCommand } = require('./modules/web');
+const security = require('./modules/security');
+const conversationStore = require('./modules/conversation_store');
+const memory = require('./modules/memory');
 
 const app = express();
 const corsOptions = config.allowedOrigin === '*' ? {} : { origin: config.allowedOrigin };
@@ -382,9 +385,55 @@ app.get('/system', async (req, res) => {
   res.json({ ...result, target });
 });
 
+// --- Seven-Layer Security Matrix Endpoint ---
+app.get('/api/security-matrix', (req, res) => {
+  res.json({ success: true, levels: security.AUTHORITY_LEVELS });
+});
+
+// --- Conversation Store Endpoints ---
+app.get('/api/sessions', (req, res) => {
+  const sessions = conversationStore.listSessions();
+  res.json({ success: true, sessions });
+});
+
+app.get('/api/turns', (req, res) => {
+  const { sessionId, limit } = req.query;
+  const turns = conversationStore.listTurns(sessionId, Number(limit) || 50);
+  res.json({ success: true, turns });
+});
+
+app.get('/api/audit-log', (req, res) => {
+  const logs = conversationStore.listAuditLogs(Number(req.query.limit) || 50);
+  res.json({ success: true, auditLogs: logs });
+});
+
+// --- Long-Term Memory Endpoints ---
+app.get('/api/memory', (req, res) => {
+  const { q } = req.query;
+  const memories = memory.listMemories(q);
+  res.json({ success: true, memories });
+});
+
+app.post('/api/memory', (req, res) => {
+  const { kind, content, tags } = req.body;
+  if (!content) return res.status(400).json({ success: false, error: 'Memory content is required' });
+  const record = memory.addMemory(kind, content, tags, 'manual_api');
+  conversationStore.logAuditEvent('memory_create', 'A3', 'memory_store', 'success', `Created memory: "${content.slice(0, 40)}"`);
+  res.json({ success: true, memory: record });
+});
+
+app.delete('/api/memory/:id', (req, res) => {
+  const { id } = req.params;
+  const removed = memory.deleteMemory(id);
+  if (removed) {
+    conversationStore.logAuditEvent('memory_delete', 'A6', 'memory_store', 'success', `Deleted memory ID: ${id}`);
+  }
+  res.json({ success: removed, deletedId: id });
+});
+
 app.listen(config.port, () => {
   console.log(`J.A.R.V.I.S backend online on port ${config.port}`);
-  console.log('Endpoints: /api/chat, /api/execute, /tts, /api/system-stats, /api/radar');
+  console.log('Endpoints: /api/chat, /api/execute, /tts, /api/system-stats, /api/radar, /api/memory, /api/sessions, /api/audit-log, /api/security-matrix');
 });
 
 process.on('SIGTERM', () => {

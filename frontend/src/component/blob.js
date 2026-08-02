@@ -75,7 +75,9 @@ const AIVoiceBlob = ({ blobConfig = {}, setBlobConfig }) => {
   }, []);
 
   useEffect(() => {
-    startMicrophone();
+    // The recognizer owns microphone capture during a Right Alt session.
+    // Keeping a second stream open here made Chrome show a recording state
+    // even while JARVIS was idle.
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());

@@ -112,7 +112,13 @@ export function focusBrowser() {
 }
 
 export function ttsUrl(text, lang) {
-  return `${API_BASE_URL}/tts?text=${encodeURIComponent(text)}&lang=${encodeURIComponent(lang || 'en-IN')}`;
+  const clean = String(text || '')
+    .replace(/[,;:]+/g, ' ')
+    .replace(/!+/g, '.')
+    .replace(/\.{2,}/g, '.')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return `${API_BASE_URL}/tts?text=${encodeURIComponent(clean || text)}&lang=${encodeURIComponent(lang || 'en-IN')}`;
 }
 
 export { API_BASE_URL };

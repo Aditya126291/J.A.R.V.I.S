@@ -309,11 +309,18 @@ function writeChunked(res, buffer) {
  * Throws BEFORE any byte hits the wire so the caller can fall back cleanly.
  */
 async function renderEdgeTts(text, voice) {
+  const cleanedText = String(text || '')
+    .replace(/[,;:]+/g, ' ')
+    .replace(/!+/g, '.')
+    .replace(/\.{2,}/g, '.')
+    .replace(/\s+/g, ' ')
+    .trim() || text;
+
   const tts = new EdgeTTS({
     voice,
     lang: voice.split('-').slice(0, 2).join('-'),
     outputFormat: 'audio-24khz-48kbitrate-mono-mp3',
-    rate: '+8%',
+    rate: '+35%',
     volume: '+0%',
     pitch: '+0Hz',
     timeout: EDGE_TIMEOUT_MS,
@@ -321,11 +328,11 @@ async function renderEdgeTts(text, voice) {
 
   let buffer;
   if (typeof tts.toRaw === 'function') {
-    buffer = await tts.toRaw(text);
+    buffer = await tts.toRaw(cleanedText);
   } else if (typeof tts.ttsPromise === 'function' && tts.ttsPromise.length <= 1) {
-    buffer = await tts.ttsPromise(text);
+    buffer = await tts.ttsPromise(cleanedText);
   } else if (typeof tts.synthesize === 'function') {
-    buffer = await tts.synthesize(text);
+    buffer = await tts.synthesize(cleanedText);
   } else {
     // Last-ditch fallback for older library versions: render to a temp file.
     const os = require('os');
