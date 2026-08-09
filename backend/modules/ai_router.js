@@ -9,8 +9,6 @@ const {
   summarizeAction,
 } = require('./command_registry');
 
-const security = require('./security');
-const conversationStore = require('./conversation_store');
 const memory = require('./memory');
 
 const SYSTEM_PROMPT = [
@@ -482,8 +480,12 @@ function getHistory() {
 }
 
 function buildMessages(userMessage) {
+  const memoryContext = memory.recallRelevantMemory(userMessage);
+  const systemPrompt = memoryContext
+    ? `${SYSTEM_PROMPT}\n\nRelevant long-term memory (use only when helpful):\n${memoryContext}`
+    : SYSTEM_PROMPT;
   return [
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: systemPrompt },
     ...conversationHistory.slice(-10),
     { role: 'user', content: userMessage },
   ];
@@ -2342,14 +2344,6 @@ async function chatStream(userMessage, onEvent) {
 
       addToHistory('user', userMessage);
       addToHistory('assistant', structured.speech);
-
-      try {
-        conversationStore.saveTurn(userMessage, structured.speech, provider.name);
-        memory.extractAndSaveMemories(userMessage);
-        conversationStore.logAuditEvent('chat_turn', 'A0', 'ai_router', 'success', `Prompt: "${userMessage.slice(0, 40)}"`);
-      } catch (e) {
-        console.error('[AI ROUTER] Store/Memory save error:', e.message);
-      }
 
       safeOnEvent(onEvent, 'done', {
         speech: structured.speech,

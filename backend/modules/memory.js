@@ -11,19 +11,24 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const MEMORY_DIR = path.resolve(__dirname, '..', 'data');
-const MEMORIES_FILE = path.join(MEMORY_DIR, 'memories.json');
-const ARTIFACTS_FILE = path.join(MEMORY_DIR, 'artifacts.json');
+const MEMORIES_FILE = 'memories.json';
+const ARTIFACTS_FILE = 'artifacts.json';
 
-function ensureMemoryDir() {
-  if (!fs.existsSync(MEMORY_DIR)) {
-    fs.mkdirSync(MEMORY_DIR, { recursive: true });
-  }
+function getStoreDir() {
+  return path.resolve(process.env.JARVIS_DATA_DIR || path.join(__dirname, '..', 'data'));
 }
 
-function loadJson(file, defaultVal = []) {
+function getFilePath(filename) {
+  const dir = getStoreDir();
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return path.join(dir, filename);
+}
+
+function loadJson(fileKey, defaultVal = []) {
   try {
-    ensureMemoryDir();
+    const file = getFilePath(fileKey);
     if (!fs.existsSync(file)) return defaultVal;
     const raw = fs.readFileSync(file, 'utf8');
     return JSON.parse(raw);
@@ -32,12 +37,12 @@ function loadJson(file, defaultVal = []) {
   }
 }
 
-function saveJson(file, data) {
+function saveJson(fileKey, data) {
   try {
-    ensureMemoryDir();
+    const file = getFilePath(fileKey);
     fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
   } catch (err) {
-    console.error(`[MEMORY] Failed writing ${file}:`, err.message);
+    console.error(`[MEMORY] Failed writing ${fileKey}:`, err.message);
   }
 }
 
@@ -104,10 +109,13 @@ function extractAndSaveMemories(userText) {
 
 function addMemory(kind, content, tags = [], source = 'manual') {
   const memories = loadJson(MEMORIES_FILE, []);
+  const normalizedContent = String(content || '').trim();
+  const duplicate = memories.find((memory) => memory.content.toLowerCase() === normalizedContent.toLowerCase());
+  if (duplicate) return duplicate;
   const record = {
     id: `mem_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`,
     kind: kind || 'explicit_memory',
-    content,
+    content: normalizedContent,
     tags: Array.isArray(tags) ? tags : [],
     source,
     createdAt: new Date().toISOString(),
@@ -137,6 +145,29 @@ function listMemories(query = '') {
   );
 }
 
+function addArtifact({ name, sourcePath = '', text = '', tags = [], summary = '' } = {}) {
+  const artifacts = loadJson(ARTIFACTS_FILE, []);
+  const record = {
+    id: `artifact_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`,
+    name: String(name || sourcePath || 'Untitled artifact').trim(),
+    sourcePath: String(sourcePath || '').trim(),
+    text: String(text || '').trim().slice(0, 12000),
+    summary: String(summary || '').trim(),
+    tags: Array.isArray(tags) ? tags.map(String).filter(Boolean) : [],
+    createdAt: new Date().toISOString(),
+  };
+  artifacts.unshift(record);
+  saveJson(ARTIFACTS_FILE, artifacts.slice(0, 1000));
+  return record;
+}
+
+function listArtifacts(query = '') {
+  const artifacts = loadJson(ARTIFACTS_FILE, []);
+  const needle = String(query || '').trim().toLowerCase();
+  if (!needle) return artifacts;
+  return artifacts.filter((artifact) => `${artifact.name} ${artifact.summary} ${artifact.text} ${(artifact.tags || []).join(' ')}`.toLowerCase().includes(needle));
+}
+
 /**
  * Recall minimal relevant memories to inject into Gemini system prompt
  */
@@ -151,7 +182,7 @@ function recallRelevantMemory(userPrompt) {
     return q.split(/\s+/).some((word) => word.length > 2 && (text.includes(word) || tags.includes(word)));
   });
 
-  const selected = matched.length > 0 ? matched.slice(0, 3) : memories.slice(0, 2);
+  const selected = matched.slice(0, 3);
   return selected.map((m) => `- ${m.content}`).join('\n');
 }
 
@@ -161,4 +192,6 @@ module.exports = {
   listMemories,
   extractAndSaveMemories,
   recallRelevantMemory,
+  addArtifact,
+  listArtifacts,
 };

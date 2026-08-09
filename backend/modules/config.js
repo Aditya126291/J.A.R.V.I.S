@@ -43,6 +43,7 @@ const config = {
   geminiFallbackModel: process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.1-flash-live-preview',
   ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
   ollamaModel: process.env.OLLAMA_MODEL || 'gemma4:26b',
+  securityPin: process.env.JARVIS_SECURITY_PIN || '',
   reload() {
     loadDotEnv(envPath, true);
     this.port = Number(process.env.JARVIS_PORT || 5000);
@@ -53,6 +54,7 @@ const config = {
     this.geminiFallbackModel = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.1-flash-live-preview';
     this.ollamaBaseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
     this.ollamaModel = process.env.OLLAMA_MODEL || 'gemma4:26b';
+    this.securityPin = process.env.JARVIS_SECURITY_PIN || '';
     console.log('[CONFIG] Environment variables and configuration dynamically reloaded.');
   }
 };

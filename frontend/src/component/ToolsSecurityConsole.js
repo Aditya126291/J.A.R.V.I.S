@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './ToolsSecurityConsole.css';
+import { getAuditLog, getSecurityMatrix } from '../api';
 
 const ToolsSecurityConsole = () => {
   const [matrix, setMatrix] = useState({});
@@ -7,15 +8,13 @@ const ToolsSecurityConsole = () => {
   const [activeTab, setActiveTab] = useState('security'); // 'security' | 'audit'
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/security-matrix')
-      .then((res) => res.json())
+    getSecurityMatrix()
       .then((data) => {
         if (data.success) setMatrix(data.levels || {});
       })
       .catch((err) => console.error('Failed to fetch security matrix:', err));
 
-    fetch('http://localhost:5000/api/audit-log')
-      .then((res) => res.json())
+    getAuditLog()
       .then((data) => {
         if (data.success) setAuditLogs(data.auditLogs || []);
       })

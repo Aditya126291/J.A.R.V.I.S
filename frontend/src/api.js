@@ -1,6 +1,17 @@
 const API_BASE_URL = process.env.REACT_APP_JARVIS_API_URL || 'http://localhost:5000';
+const SESSION_ID_KEY = 'jarvis.conversationSessionId';
 
 const cache = new Map();
+
+export function getConversationSessionId() {
+  if (typeof window === 'undefined') return 'desktop-global';
+  let id = window.localStorage.getItem(SESSION_ID_KEY);
+  if (!id) {
+    id = `session_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    window.localStorage.setItem(SESSION_ID_KEY, id);
+  }
+  return id;
+}
 
 async function jsonRequest(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -31,13 +42,13 @@ function cachedJson(path, ttlMs) {
 export function chatWithJarvis(message) {
   return jsonRequest('/api/chat', {
     method: 'POST',
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, sessionId: getConversationSessionId() }),
   });
 }
 
 export function chatWithJarvisStream(message, callbacks = {}) {
   const { onMeta, onSpeechDelta, onActionReady, onDone, onError } = callbacks;
-  const url = `${API_BASE_URL}/api/chat-stream?message=${encodeURIComponent(message)}`;
+  const url = `${API_BASE_URL}/api/chat-stream?message=${encodeURIComponent(message)}&sessionId=${encodeURIComponent(getConversationSessionId())}`;
   const controller = new AbortController();
 
   const promise = (async () => {
@@ -92,11 +103,50 @@ export function chatWithJarvisStream(message, callbacks = {}) {
   return { controller, promise };
 }
 
-export function executeJarvisAction(payload, confirmed = false) {
+export function executeJarvisAction(payload, confirmed = false, securityPin = '') {
   return jsonRequest('/api/execute', {
     method: 'POST',
-    body: JSON.stringify({ ...payload, confirmed }),
+    body: JSON.stringify({ ...payload, confirmed, securityPin, sessionId: getConversationSessionId() }),
   });
+}
+
+export function getMemories(query = '') {
+  return jsonRequest(`/api/memory?q=${encodeURIComponent(query)}`);
+}
+
+export function createMemory(memory) {
+  return jsonRequest('/api/memory', { method: 'POST', body: JSON.stringify(memory) });
+}
+
+export function deleteMemory(id) {
+  return jsonRequest(`/api/memory/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+export function getSessions(query = '') {
+  return jsonRequest(`/api/sessions?q=${encodeURIComponent(query)}`);
+}
+
+export function getTurns({ sessionId, query, limit = 50 } = {}) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (sessionId) params.set('sessionId', sessionId);
+  if (query) params.set('q', query);
+  return jsonRequest(`/api/turns?${params.toString()}`);
+}
+
+export function getArtifacts(query = '') {
+  return jsonRequest(`/api/artifacts?q=${encodeURIComponent(query)}`);
+}
+
+export function createArtifact(artifact) {
+  return jsonRequest('/api/artifacts', { method: 'POST', body: JSON.stringify(artifact) });
+}
+
+export function getSecurityMatrix() {
+  return cachedJson('/api/security-matrix', 5000);
+}
+
+export function getAuditLog() {
+  return cachedJson('/api/audit-log', 1000);
 }
 
 export function getAiStatus() {

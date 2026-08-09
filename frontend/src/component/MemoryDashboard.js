@@ -1,20 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import './MemoryDashboard.css';
+import { createMemory, deleteMemory, getArtifacts, getMemories, getSessions, getTurns } from '../api';
 
 const MemoryDashboard = () => {
   const [memories, setMemories] = useState([]);
   const [sessions, setSessions] = useState([]);
+  const [artifacts, setArtifacts] = useState([]);
+  const [turns, setTurns] = useState([]);
+  const [selectedSession, setSelectedSession] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [newMemoryContent, setNewMemoryContent] = useState('');
   const [newMemoryKind, setNewMemoryKind] = useState('explicit_memory');
   const [isLoading, setIsLoading] = useState(false);
-  const [activeSubTab, setActiveSubTab] = useState('memories'); // 'memories' | 'sessions'
+  const [activeSubTab, setActiveSubTab] = useState('memories'); // 'memories' | 'sessions' | 'artifacts'
 
   const fetchMemories = async (query = '') => {
     try {
       setIsLoading(true);
-      const res = await fetch(`http://localhost:5000/api/memory?q=${encodeURIComponent(query)}`);
-      const data = await res.json();
+      const data = await getMemories(query);
       if (data.success) {
         setMemories(data.memories || []);
       }
@@ -25,10 +28,9 @@ const MemoryDashboard = () => {
     }
   };
 
-  const fetchSessions = async () => {
+  const fetchSessions = async (query = '') => {
     try {
-      const res = await fetch('http://localhost:5000/api/sessions');
-      const data = await res.json();
+      const data = await getSessions(query);
       if (data.success) {
         setSessions(data.sessions || []);
       }
@@ -37,14 +39,35 @@ const MemoryDashboard = () => {
     }
   };
 
+  const fetchArtifacts = async (query = '') => {
+    try {
+      const data = await getArtifacts(query);
+      if (data.success) setArtifacts(data.artifacts || []);
+    } catch (e) {
+      console.error('Failed to fetch artifacts:', e);
+    }
+  };
+
+  const selectSession = async (session) => {
+    try {
+      const data = await getTurns({ sessionId: session.sessionId });
+      setSelectedSession(session);
+      setTurns(data.turns || []);
+    } catch (e) {
+      console.error('Failed to fetch session turns:', e);
+    }
+  };
+
   useEffect(() => {
     fetchMemories();
     fetchSessions();
+    fetchArtifacts();
   }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    fetchMemories(searchQuery);
+    if (activeSubTab === 'artifacts') fetchArtifacts(searchQuery);
+    else fetchMemories(searchQuery);
   };
 
   const handleAddMemory = async (e) => {
@@ -52,16 +75,7 @@ const MemoryDashboard = () => {
     if (!newMemoryContent.trim()) return;
 
     try {
-      const res = await fetch('http://localhost:5000/api/memory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          kind: newMemoryKind,
-          content: newMemoryContent.trim(),
-          tags: ['manual_add'],
-        }),
-      });
-      const data = await res.json();
+      const data = await createMemory({ kind: newMemoryKind, content: newMemoryContent.trim(), tags: ['manual_add'] });
       if (data.success) {
         setNewMemoryContent('');
         fetchMemories(searchQuery);
@@ -73,10 +87,7 @@ const MemoryDashboard = () => {
 
   const handleDeleteMemory = async (id) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/memory/${id}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json();
+      const data = await deleteMemory(id);
       if (data.success) {
         fetchMemories(searchQuery);
       }
@@ -101,13 +112,19 @@ const MemoryDashboard = () => {
           >
             📜 Conversation History ({sessions.length})
           </button>
+          <button
+            className={`subtab-btn ${activeSubTab === 'artifacts' ? 'active' : ''}`}
+            onClick={() => setActiveSubTab('artifacts')}
+          >
+            🗂️ Artifacts ({artifacts.length})
+          </button>
         </div>
 
-        {activeSubTab === 'memories' && (
+        {(activeSubTab === 'memories' || activeSubTab === 'artifacts') && (
           <form className="memory-search-bar" onSubmit={handleSearch}>
             <input
               type="text"
-              placeholder="Search memories by keyword or tag..."
+              placeholder={activeSubTab === 'artifacts' ? 'Search artifact text, summary, or tags...' : 'Search memories by keyword or tag...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -171,11 +188,15 @@ const MemoryDashboard = () => {
 
       {activeSubTab === 'sessions' && (
         <div className="sessions-list-wrapper">
+          <form className="memory-search-bar" onSubmit={(event) => { event.preventDefault(); fetchSessions(searchQuery); }}>
+            <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search past sessions..." />
+            <button type="submit">Search</button>
+          </form>
           {sessions.length === 0 ? (
             <div className="empty-indicator">No session history found.</div>
           ) : (
             sessions.map((sess) => (
-              <div className="session-card" key={sess.sessionId}>
+              <button type="button" className="session-card" key={sess.sessionId} onClick={() => selectSession(sess)}>
                 <div className="session-title">
                   <span>{sess.title}</span>
                   <span className="session-date">{new Date(sess.startedAt).toLocaleString()}</span>
@@ -185,9 +206,32 @@ const MemoryDashboard = () => {
                   <span>Turns: {sess.turnCount || 0}</span>
                   <span>ID: {sess.sessionId}</span>
                 </div>
-              </div>
+              </button>
             ))
           )}
+          {selectedSession && (
+            <div className="session-turns">
+              <h3>{selectedSession.title} — turns</h3>
+              {turns.length === 0 ? <div className="empty-indicator">This session was compacted or has no retained turns.</div> : turns.map((turn) => (
+                <div className="memory-card" key={turn.turnId}>
+                  <p className="memory-text"><strong>You:</strong> {turn.userPrompt}</p>
+                  <p className="memory-text"><strong>J.A.R.V.I.S:</strong> {turn.jarvisSpeech}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeSubTab === 'artifacts' && (
+        <div className="memory-grid">
+          {artifacts.length === 0 ? <div className="empty-indicator">No indexed artifacts yet.</div> : artifacts.map((artifact) => (
+            <div className="memory-card" key={artifact.id}>
+              <div className="memory-card-header"><strong>{artifact.name}</strong><span className="kind-badge">artifact</span></div>
+              <p className="memory-text">{artifact.summary || artifact.text || 'No extractable text recorded.'}</p>
+              <div className="tags">{(artifact.tags || []).map((tag) => <span className="tag" key={tag}>#{tag}</span>)}</div>
+            </div>
+          ))}
         </div>
       )}
     </div>

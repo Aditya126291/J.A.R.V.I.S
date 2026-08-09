@@ -55,8 +55,8 @@ function classifyAuthority(payload) {
     return { level: 'A5', meta: AUTHORITY_LEVELS.A5 };
   }
 
-  // A4: External Communication / Launch
-  if (mod === 'message' || mod === 'email' || act.includes('send') || act.includes('post') || act === 'open') {
+  // A4: External communication. Opening a local application is A1.
+  if (mod === 'message' || mod === 'email' || mod === 'social' || act.includes('send') || act.includes('post')) {
     return { level: 'A4', meta: AUTHORITY_LEVELS.A4 };
   }
 
@@ -70,8 +70,8 @@ function classifyAuthority(payload) {
     return { level: 'A2', meta: AUTHORITY_LEVELS.A2 };
   }
 
-  // A1: Harmless Read
-  if (act.includes('read') || act.includes('list') || act.includes('get')) {
+  // A1: Harmless local actions and reads.
+  if ((mod === 'apps' && act === 'open') || act.includes('read') || act.includes('list') || act.includes('get')) {
     return { level: 'A1', meta: AUTHORITY_LEVELS.A1 };
   }
 
@@ -93,7 +93,8 @@ function generateDryRunPreview(payload) {
     title: `Authorization Request [${classification.level}]`,
     actionDescription: `Module: ${module || 'system'} | Action: ${action || 'execute'}`,
     targetValue: typeof value === 'object' ? JSON.stringify(value) : String(value || 'None'),
-    warning: classification.level >= 'A6' ? 'CRITICAL: Destructive operation.' : classification.level >= 'A4' ? 'External communication or system launch.' : null,
+    requiresPin: classification.level === 'A7',
+    warning: classification.level >= 'A6' ? 'CRITICAL: Destructive operation.' : classification.level >= 'A4' ? 'External communication or state change.' : null,
   };
 }
 

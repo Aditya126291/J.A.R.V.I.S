@@ -190,10 +190,26 @@
 }
 
 .session-card {
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
   background: rgba(15, 23, 42, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   padding: 14px;
+}
+
+.session-card:hover {
+  border-color: rgba(56, 189, 248, 0.45);
+}
+
+.session-turns {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
 }
 
 .session-title {

@@ -882,7 +882,7 @@ const Terminal = ({ blobConfig = {} }) => {
   }, []);
 
   const executeCommand = useCallback(
-    async (payloads, confirmed = false, skipSpeak = false) => {
+    async (payloads, confirmed = false, skipSpeak = false, securityPin = '') => {
       if (!Array.isArray(payloads) || payloads.length === 0) {
         enqueueSpeechChunk(sanitizeSpokenText('I encountered a command parsing error. Please try again.'));
         return;
@@ -905,12 +905,12 @@ const Terminal = ({ blobConfig = {} }) => {
         }
 
         try {
-          const data = await executeJarvisAction(payload, confirmed);
+          const data = await executeJarvisAction(payload, confirmed, securityPin);
 
           if (data.requiresConfirmation) {
-            setPendingAction({ payloads: [payload], speech: 'I need authorization before I do that.' });
+            setPendingAction({ payloads: [payload], previews: data.preview ? [data.preview] : [], speech: data.error || 'I need authorization before I do that.' });
             updateLastJarvis('Authorization required.');
-            enqueueSpeechChunk(sanitizeSpokenText('I need authorization before I do that.'));
+            enqueueSpeechChunk(sanitizeSpokenText(data.requiresPin ? 'I need your security PIN before I can do that.' : 'I need authorization before I do that.'));
             dispatchLog(`Authorization required: ${summarizePayload(payload)}`, 'warning');
             continue;
           }
@@ -938,12 +938,12 @@ const Terminal = ({ blobConfig = {} }) => {
     [appendChat, dispatchLog, enqueueSpeechChunk, updateLastJarvis]
   );
 
-  const handleConfirm = useCallback(() => {
+  const handleConfirm = useCallback((securityPin = '') => {
     const action = pendingActionRef.current;
     if (!action) return;
     setPendingAction(null);
     updateLastJarvis('Authorized. Executing command...');
-    executeCommand(action.payloads, true);
+    executeCommand(action.payloads, true, false, securityPin);
   }, [executeCommand, updateLastJarvis]);
 
   const handleCancel = useCallback(() => {
@@ -971,7 +971,6 @@ const Terminal = ({ blobConfig = {} }) => {
 
     let accumulatedSpeech = '';
     let collectedActions = null;
-    let collectedNeedsConfirmation = false;
 
     try {
       const { controller, promise } = chatWithJarvisStream(promptText, {
@@ -992,9 +991,8 @@ const Terminal = ({ blobConfig = {} }) => {
           updateLastJarvis(sanitizeSpokenText(accumulatedSpeech));
           ingestSpeechDelta(text, onFirstChunk);
         },
-        onActionReady: ({ actions, needsConfirmation }) => {
+        onActionReady: ({ actions }) => {
           collectedActions = actions || [];
-          collectedNeedsConfirmation = !!needsConfirmation;
         },
         onDone: () => {
           flushPendingSentence(true, onFirstChunk);
@@ -1007,11 +1005,7 @@ const Terminal = ({ blobConfig = {} }) => {
       await promise;
 
       if (collectedActions && collectedActions.length) {
-        if (collectedNeedsConfirmation) {
-          setPendingAction({ payloads: collectedActions, speech: accumulatedSpeech || 'Authorization required.' });
-        } else {
-          executeCommand(collectedActions, false, true /* skipSpeak — we already streamed it */);
-        }
+        executeCommand(collectedActions, false, true /* skipSpeak — we already streamed it */);
       }
       window.dispatchEvent(new CustomEvent('jarvis-api-status', { detail: 'connected' }));
     } catch (err) {
@@ -1030,8 +1024,7 @@ const Terminal = ({ blobConfig = {} }) => {
           first = false;
         }
         if (actions.length) {
-          if (result.needsConfirmation) setPendingAction({ payloads: actions, speech });
-          else executeCommand(actions, false, true);
+          executeCommand(actions, false, true);
         }
         window.dispatchEvent(new CustomEvent('jarvis-api-status', { detail: 'connected' }));
       } catch (err2) {
@@ -1246,6 +1239,7 @@ const Terminal = ({ blobConfig = {} }) => {
       {pendingAction && (
         <ConfirmDialog
           payloads={pendingAction.payloads}
+          previews={pendingAction.previews}
           speech={pendingAction.speech}
           onConfirm={handleConfirm}
           onCancel={handleCancel}

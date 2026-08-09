@@ -125,6 +125,17 @@
   width: 100%;
 }
 
+.confirm-pin-input {
+  width: 100%;
+  margin: 4px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 196, 0, 0.55);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font: inherit;
+}
+
 .confirm-btn {
   flex: 1;
   padding: 12px 0;

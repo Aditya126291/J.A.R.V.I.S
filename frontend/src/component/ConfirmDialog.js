@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './ConfirmDialog.css';
 
 function summarizePayload(payload) {
@@ -15,11 +15,13 @@ function summarizePayload(payload) {
   return `${payload.module.toUpperCase()} ${payload.action.replace(/_/g, ' ').toUpperCase()}`;
 }
 
-const ConfirmDialog = ({ payloads = [], speech, onConfirm, onCancel, activeColor }) => {
+const ConfirmDialog = ({ payloads = [], previews = [], speech, onConfirm, onCancel, activeColor }) => {
   const color = activeColor || '#00ffe1';
   const primaryPayload = payloads[0];
+  const preview = previews[0] || null;
+  const [securityPin, setSecurityPin] = useState('');
   const target = payloads.map(summarizePayload).join(' + ') || 'Unknown action';
-  const isDestructive = primaryPayload?.module === 'power' || primaryPayload?.action === 'delete';
+  const isDestructive = preview?.authorityLevel === 'A6' || preview?.authorityLevel === 'A7' || primaryPayload?.module === 'power' || primaryPayload?.action === 'delete';
 
   return (
     <div className="confirm-overlay">
@@ -39,15 +41,28 @@ const ConfirmDialog = ({ payloads = [], speech, onConfirm, onCancel, activeColor
         <div className="confirm-body">
           <span className="confirm-label">ACTION:</span>
           <span className="confirm-target" style={{ color, textShadow: `0 0 8px ${color}80` }}>
-            {target}
+            {preview?.actionDescription || target}
           </span>
         </div>
+        {preview?.targetValue && <div className="confirm-body"><span className="confirm-label">TARGET:</span><span className="confirm-target">{preview.targetValue}</span></div>}
+        {preview?.authorityLevel && <div className="confirm-body"><span className="confirm-label">AUTHORITY:</span><span className="confirm-target">{preview.authorityLevel} — {preview.authorityName}</span></div>}
         {speech && <div className="confirm-prompt">{speech}</div>}
-        {isDestructive && <div className="confirm-warning">This may change system state immediately.</div>}
+        {(preview?.warning || isDestructive) && <div className="confirm-warning">{preview?.warning || 'This may change system state immediately.'}</div>}
+        {preview?.requiresPin && (
+          <input
+            className="confirm-pin-input"
+            type="password"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="Enter JARVIS security PIN"
+            value={securityPin}
+            onChange={(event) => setSecurityPin(event.target.value)}
+          />
+        )}
         <div className="confirm-actions">
           <button
             className="confirm-btn confirm-yes"
-            onClick={onConfirm}
+            onClick={() => onConfirm(securityPin)}
             style={{
               borderColor: '#00ff88',
               color: '#00ff88',

@@ -11,20 +11,25 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const STORE_DIR = path.resolve(__dirname, '..', 'data');
-const SESSIONS_FILE = path.join(STORE_DIR, 'sessions.json');
-const TURNS_FILE = path.join(STORE_DIR, 'turns.json');
-const AUDIT_FILE = path.join(STORE_DIR, 'audit_log.json');
+const SESSIONS_FILE = 'sessions.json';
+const TURNS_FILE = 'turns.json';
+const AUDIT_FILE = 'audit_log.json';
 
-function ensureStoreDir() {
-  if (!fs.existsSync(STORE_DIR)) {
-    fs.mkdirSync(STORE_DIR, { recursive: true });
-  }
+function getStoreDir() {
+  return path.resolve(process.env.JARVIS_DATA_DIR || path.join(__dirname, '..', 'data'));
 }
 
-function loadJson(file, defaultVal = []) {
+function getFilePath(filename) {
+  const dir = getStoreDir();
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return path.join(dir, filename);
+}
+
+function loadJson(fileKey, defaultVal = []) {
   try {
-    ensureStoreDir();
+    const file = getFilePath(fileKey);
     if (!fs.existsSync(file)) return defaultVal;
     const raw = fs.readFileSync(file, 'utf8');
     return JSON.parse(raw);
@@ -33,26 +38,22 @@ function loadJson(file, defaultVal = []) {
   }
 }
 
-function saveJson(file, data) {
+function saveJson(fileKey, data) {
   try {
-    ensureStoreDir();
+    const file = getFilePath(fileKey);
     fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
   } catch (err) {
-    console.error(`[STORE] Failed writing ${file}:`, err.message);
+    console.error(`[STORE] Failed writing ${fileKey}:`, err.message);
   }
 }
 
 let activeSessionId = null;
+const COMPACTION_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 
-function getOrCreateActiveSession() {
+function createSession(requestedId = null) {
   const sessions = loadJson(SESSIONS_FILE, []);
-  if (activeSessionId) {
-    const existing = sessions.find((s) => s.sessionId === activeSessionId && !s.endedAt);
-    if (existing) return existing;
-  }
-
   const newSession = {
-    sessionId: `session_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
+    sessionId: requestedId || `session_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
     startedAt: new Date().toISOString(),
     endedAt: null,
     title: 'Voice & Command Console Session',
@@ -67,8 +68,22 @@ function getOrCreateActiveSession() {
   return newSession;
 }
 
-function saveTurn(userPrompt, jarvisSpeech, provider = 'Gemini Primary') {
-  const session = getOrCreateActiveSession();
+function getOrCreateActiveSession(requestedId = null) {
+  const sessions = loadJson(SESSIONS_FILE, []);
+  const id = requestedId || activeSessionId;
+  if (id) {
+    const existing = sessions.find((s) => s.sessionId === id && !s.endedAt);
+    if (existing) {
+      activeSessionId = existing.sessionId;
+      return existing;
+    }
+  }
+  compactExpiredSessions();
+  return createSession(requestedId);
+}
+
+function saveTurn(userPrompt, jarvisSpeech, provider = 'Gemini Primary', sessionId = null) {
+  const session = getOrCreateActiveSession(sessionId);
   const turns = loadJson(TURNS_FILE, []);
 
   const turnRecord = {
@@ -95,8 +110,8 @@ function saveTurn(userPrompt, jarvisSpeech, provider = 'Gemini Primary') {
   return turnRecord;
 }
 
-function logAuditEvent(eventType, authorityLevel, target, result, summary) {
-  const session = getOrCreateActiveSession();
+function logAuditEvent(eventType, authorityLevel, target, result, summary, sessionId = null) {
+  const session = getOrCreateActiveSession(sessionId);
   const auditLogs = loadJson(AUDIT_FILE, []);
 
   const event = {
@@ -115,8 +130,12 @@ function logAuditEvent(eventType, authorityLevel, target, result, summary) {
   return event;
 }
 
-function listSessions() {
-  return loadJson(SESSIONS_FILE, []);
+function listSessions(query = '') {
+  const sessions = loadJson(SESSIONS_FILE, []);
+  const needle = String(query || '').trim().toLowerCase();
+  if (!needle) return sessions;
+  return sessions.filter((session) => [session.sessionId, session.title, session.summary]
+    .some((value) => String(value || '').toLowerCase().includes(needle)));
 }
 
 function listTurns(sessionId = null, limit = 50) {
@@ -131,11 +150,49 @@ function listAuditLogs(limit = 50) {
   return loadJson(AUDIT_FILE, []).slice(0, limit);
 }
 
+function searchTurns(query, limit = 50) {
+  const needle = String(query || '').trim().toLowerCase();
+  if (!needle) return [];
+  return loadJson(TURNS_FILE, [])
+    .filter((turn) => `${turn.userPrompt || ''} ${turn.jarvisSpeech || ''}`.toLowerCase().includes(needle))
+    .slice(0, limit);
+}
+
+function compactSession(sessionId) {
+  const sessions = loadJson(SESSIONS_FILE, []);
+  const index = sessions.findIndex((session) => session.sessionId === sessionId);
+  if (index < 0) return null;
+  const turns = loadJson(TURNS_FILE, []);
+  const sessionTurns = turns.filter((turn) => turn.sessionId === sessionId);
+  if (!sessionTurns.length) return sessions[index];
+
+  const newest = sessionTurns[0];
+  sessions[index] = {
+    ...sessions[index],
+    summary: `${sessionTurns.length} turns compacted. Last prompt: "${String(newest.userPrompt || '').slice(0, 100)}"`,
+    compactedAt: new Date().toISOString(),
+  };
+  saveJson(SESSIONS_FILE, sessions);
+  saveJson(TURNS_FILE, turns.filter((turn) => turn.sessionId !== sessionId));
+  return sessions[index];
+}
+
+function compactExpiredSessions(now = Date.now()) {
+  const sessions = loadJson(SESSIONS_FILE, []);
+  sessions
+    .filter((session) => !session.compactedAt && Date.parse(session.startedAt || '') > 0 && now - Date.parse(session.startedAt) >= COMPACTION_AGE_MS)
+    .forEach((session) => compactSession(session.sessionId));
+}
+
 module.exports = {
   getOrCreateActiveSession,
+  createSession,
   saveTurn,
   logAuditEvent,
   listSessions,
   listTurns,
   listAuditLogs,
+  searchTurns,
+  compactSession,
+  compactExpiredSessions,
 };

@@ -6,7 +6,7 @@ const telemetry = require('./modules/telemetry');
 const aiRouter = require('./modules/ai_router');
 const tts = require('./modules/tts');
 const { runPowerShell } = require('./modules/utils');
-const { normalizePayload, requiresConfirmation, summarizeAction } = require('./modules/command_registry');
+const { normalizePayload, summarizeAction } = require('./modules/command_registry');
 const { handleAppCommand } = require('./modules/apps');
 const { handleSystemCommand } = require('./modules/system');
 const { handlePowerCommand } = require('./modules/power');
@@ -29,15 +29,30 @@ app.use(express.json({ limit: '1mb' }));
 
 tts.registerTtsRoute(app);
 
+function requestSessionId(req) {
+  const value = req.body?.sessionId || req.query?.sessionId;
+  return /^[a-zA-Z0-9_-]{1,96}$/.test(String(value || '')) ? String(value) : null;
+}
+
+function persistChatTurn(message, result, sessionId) {
+  const speech = String(result?.speech || result?.response || '').trim();
+  const provider = result?.provider || 'unknown';
+  conversationStore.saveTurn(message, speech, provider, sessionId);
+  memory.extractAndSaveMemories(message);
+  conversationStore.logAuditEvent('chat_turn', 'A0', 'ai_router', 'success', `Prompt: "${String(message).slice(0, 40)}"`, sessionId);
+}
+
 app.post('/api/chat', async (req, res) => {
   const { message } = req.body;
+  const sessionId = requestSessionId(req);
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ success: false, error: 'Message is required' });
   }
 
   try {
     const result = await aiRouter.chat(message);
-    res.json(result);
+    persistChatTurn(message, result, sessionId);
+    res.json({ ...result, sessionId: conversationStore.getOrCreateActiveSession(sessionId).sessionId });
   } catch (e) {
     console.error('[CHAT ERROR]', e);
     res.status(500).json({
@@ -61,6 +76,7 @@ function sseSend(res, type, payload) {
 
 app.get('/api/chat-stream', async (req, res) => {
   const message = String(req.query.message || '').slice(0, 2000);
+  const sessionId = requestSessionId(req);
   if (!message) {
     res.status(400).end('message required');
     return;
@@ -78,6 +94,7 @@ app.get('/api/chat-stream', async (req, res) => {
   }, 10000);
 
   let closed = false;
+  let completedTurn = null;
   req.on('close', () => { closed = true; clearInterval(heartbeat); });
 
   try {
@@ -90,14 +107,17 @@ app.get('/api/chat-stream', async (req, res) => {
         sseSend(res, 'action_ready', { actions: result.actions, needsConfirmation: !!result.needsConfirmation });
       }
       sseSend(res, 'done', { speech: result.speech, actions: result.actions || [], status: result.status, provider: result.provider });
+      completedTurn = result;
     } else {
       // ai_router.chatStream uses a unified event callback `(event) => ...`
       // where event = { type, data }. Forward each event straight through SSE.
       await aiRouter.chatStream(message, (event) => {
         if (closed || !event || !event.type) return;
+        if (event.type === 'done') completedTurn = event.data || {};
         sseSend(res, event.type, event.data || {});
       });
     }
+    if (completedTurn) persistChatTurn(message, completedTurn, sessionId);
   } catch (e) {
     console.error('[CHAT-STREAM ERROR]', e);
     sseSend(res, 'error', { message: e.message || 'stream failed', code: e.code || 'INTERNAL' });
@@ -189,25 +209,65 @@ app.post('/api/execute', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Invalid or unsupported command payload.' });
   }
 
-  const isRisky = requiresConfirmation(payload);
-  if (isRisky && req.body.confirmed !== true) {
+  const sessionId = requestSessionId(req);
+  const classification = security.classifyAuthority(payload);
+  const preview = security.generateDryRunPreview(payload);
+  const requiresConfirmation = classification.meta.requiresConfirmation;
+
+  if (requiresConfirmation && req.body.confirmed !== true) {
     return res.status(409).json({
       success: false,
       requiresConfirmation: true,
       summary: summarizeAction(payload),
-      error: 'Command requires confirmation.',
+      authorityLevel: classification.level,
+      preview,
+      error: 'Command requires explicit authorization.',
     });
+  }
+
+  if (classification.level === 'A7') {
+    if (!config.securityPin) {
+      return res.status(503).json({
+        success: false,
+        requiresConfirmation: true,
+        requiresPin: true,
+        authorityLevel: classification.level,
+        preview,
+        error: 'A7 actions are disabled until JARVIS_SECURITY_PIN is configured.'
+      });
+    }
+    if (String(req.body.securityPin || '') !== config.securityPin) {
+      return res.status(409).json({
+        success: false,
+        requiresConfirmation: true,
+        requiresPin: true,
+        authorityLevel: classification.level,
+        preview,
+        error: 'A7 action requires the configured security PIN.'
+      });
+    }
   }
 
   try {
     const result = await executePayload(payload);
+    conversationStore.logAuditEvent(
+      'action_execute',
+      classification.level,
+      `${payload.module}:${payload.action}`,
+      result.success === false ? 'failed' : 'success',
+      summarizeAction(payload),
+      sessionId
+    );
     res.json({
       ...result,
       module: payload.module,
       action: payload.action,
       summary: summarizeAction(payload),
+      authorityLevel: classification.level,
+      preview,
     });
   } catch (e) {
+    conversationStore.logAuditEvent('action_execute', classification.level, `${payload.module}:${payload.action}`, 'failed', e.message, sessionId);
     console.error('[ROUTER ERROR]', e);
     res.status(500).json({ success: false, error: e.message, summary: summarizeAction(payload) });
   }
@@ -392,13 +452,13 @@ app.get('/api/security-matrix', (req, res) => {
 
 // --- Conversation Store Endpoints ---
 app.get('/api/sessions', (req, res) => {
-  const sessions = conversationStore.listSessions();
+  const sessions = conversationStore.listSessions(req.query.q);
   res.json({ success: true, sessions });
 });
 
 app.get('/api/turns', (req, res) => {
-  const { sessionId, limit } = req.query;
-  const turns = conversationStore.listTurns(sessionId, Number(limit) || 50);
+  const { sessionId, limit, q } = req.query;
+  const turns = q ? conversationStore.searchTurns(q, Number(limit) || 50) : conversationStore.listTurns(sessionId, Number(limit) || 50);
   res.json({ success: true, turns });
 });
 
@@ -429,6 +489,16 @@ app.delete('/api/memory/:id', (req, res) => {
     conversationStore.logAuditEvent('memory_delete', 'A6', 'memory_store', 'success', `Deleted memory ID: ${id}`);
   }
   res.json({ success: removed, deletedId: id });
+});
+
+app.get('/api/artifacts', (req, res) => {
+  res.json({ success: true, artifacts: memory.listArtifacts(req.query.q) });
+});
+
+app.post('/api/artifacts', (req, res) => {
+  const artifact = memory.addArtifact(req.body || {});
+  conversationStore.logAuditEvent('artifact_index', 'A3', artifact.name, 'success', 'Artifact indexed');
+  res.status(201).json({ success: true, artifact });
 });
 
 app.listen(config.port, () => {
