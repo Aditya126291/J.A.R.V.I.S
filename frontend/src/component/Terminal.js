@@ -577,7 +577,7 @@ const Terminal = ({ blobConfig = {} }) => {
     isJarvisSpeakingRef.current = true;
     echoProtectUntilRef.current = Date.now() + (audioBuffer.duration * 1000) + 350;
     window.simulatedBlobVolumeTarget = 120;
-    nextStartTimeRef.current = startAt + Math.max(0.05, audioBuffer.duration - 0.025);
+    nextStartTimeRef.current = startAt + Math.max(0.03, audioBuffer.duration - 0.04);
     playingSourcesRef.current.add(src);
     src.onended = () => {
       playingSourcesRef.current.delete(src);

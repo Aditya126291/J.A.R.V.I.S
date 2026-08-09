@@ -320,7 +320,7 @@ async function renderEdgeTts(text, voice) {
     voice,
     lang: voice.split('-').slice(0, 2).join('-'),
     outputFormat: 'audio-24khz-48kbitrate-mono-mp3',
-    rate: '+35%',
+    rate: '+15%',
     volume: '+0%',
     pitch: '+0Hz',
     timeout: EDGE_TIMEOUT_MS,
