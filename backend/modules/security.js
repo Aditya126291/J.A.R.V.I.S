@@ -11,7 +11,7 @@
  *   - A1: Harmless Local (Read notes, list local files) -> Auto-approved
  *   - A2: Low-Impact Query (Web search, weather, wikipedia) -> Auto-approved
  *   - A3: Local Modification (Write note, adjust volume/brightness) -> Auto-approved + Audit Logged
- *   - A4: External Communication (Send message, post update, launch process) -> UI Confirmation Required
+ *   - A4: External Communication (Send message, post update) -> UI Confirmation Required
  *   - A5: State & Auth Change (Modify system config, update API keys) -> UI Confirmation Required
  *   - A6: Destructive Action (Delete file, close app, purge history) -> Strong UI Confirmation Required
  *   - A7: Unbounded Execution (Raw shell execution, shutdown) -> Explicit Confirmation
@@ -40,6 +40,13 @@ function classifyAuthority(payload) {
   const mod = String(module || '').toLowerCase();
   const act = String(action || '').toLowerCase();
 
+  // App opening and closing are immediate, local commands. The apps module
+  // accepts only validated, allow-listed targets; it never accepts a raw shell
+  // command. Keep them confirmation-free so voice control remains responsive.
+  if (mod === 'apps' && (act === 'open' || act === 'close')) {
+    return { level: 'A1', meta: AUTHORITY_LEVELS.A1 };
+  }
+
   // A7: Unbounded / System Shutdown
   if (act.includes('shutdown') || act.includes('format') || act.includes('eval')) {
     return { level: 'A7', meta: AUTHORITY_LEVELS.A7 };
@@ -55,7 +62,7 @@ function classifyAuthority(payload) {
     return { level: 'A5', meta: AUTHORITY_LEVELS.A5 };
   }
 
-  // A4: External communication. Opening a local application is A1.
+  // A4: External communication.
   if (mod === 'message' || mod === 'email' || mod === 'social' || act.includes('send') || act.includes('post')) {
     return { level: 'A4', meta: AUTHORITY_LEVELS.A4 };
   }
@@ -71,7 +78,7 @@ function classifyAuthority(payload) {
   }
 
   // A1: Harmless local actions and reads.
-  if ((mod === 'apps' && act === 'open') || act.includes('read') || act.includes('list') || act.includes('get')) {
+  if (act.includes('read') || act.includes('list') || act.includes('get')) {
     return { level: 'A1', meta: AUTHORITY_LEVELS.A1 };
   }
 

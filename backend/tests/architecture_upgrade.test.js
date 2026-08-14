@@ -27,7 +27,7 @@ describe('architecture upgrade modules', () => {
     expect(security.classifyAuthority({ module: 'web', action: 'search', value: 'weather' }).level).toBe('A2');
     expect(security.classifyAuthority({ module: 'system', action: 'volume_set', value: 40 }).level).toBe('A3');
     expect(security.classifyAuthority({ module: 'message', action: 'send', value: {} }).level).toBe('A4');
-    expect(security.classifyAuthority({ module: 'apps', action: 'close', value: 'notepad' }).level).toBe('A6');
+    expect(security.classifyAuthority({ module: 'apps', action: 'close', value: 'notepad' }).level).toBe('A1');
     expect(security.classifyAuthority({ module: 'power', action: 'shutdown', value: null }).level).toBe('A7');
   });
 

@@ -538,8 +538,10 @@ function createTtsHandler(opts = {}) {
     const primary = pickEngine(query.engine);
     const alternate = alternateEngine(primary);
 
-    // ---- Cache lookup ----------------------------------------------------
-    const cacheKey = `${voice}:${cleanText}`;
+    const activeEngineTag = config.elevenlabsPrimaryApiKey
+      ? `elevenlabs-${config.elevenlabsVoiceId || 'default'}`
+      : `${primary}-${voice}`;
+    const cacheKey = `${activeEngineTag}:${cleanText}`;
     const cached = cache.get(cacheKey);
     if (cached) {
       setAudioHeaders(res);

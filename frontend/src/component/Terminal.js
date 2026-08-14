@@ -807,6 +807,90 @@ const Terminal = ({ blobConfig = {} }) => {
       const job = {
         turnId: tid,
         seq: nextSeq,
+  /**
+   * Enqueue a speech utterance for a turn. Splits via `splitSpeech(text, 180)`,
+   * then pushes each chunk onto the FIFO `audioQueueRef` with a monotonically
+   * increasing per-turn `seq`. A single drainer reads jobs in submission
+   * order, so the playback order equals the enqueue order regardless of
+   * `/tts` response latency (Property 2 / Requirements 2.1, 2.5).
+   *
+   * Backpressure (Requirement 2.7): if more than 8 chunks are pending for the
+   * same turn at the moment of enqueue, merge the next chunk into the
+   * previous one up to `maxLen` characters. This keeps the fetch backlog
+   * bounded without dropping audio.
+   *
+   * @param {string} text   utterance text
+   * @param {string} turnId stable id for the turn
+   * @param {Function} [onFirstChunk] called when the first scheduled chunk starts
+   */
+  const enqueueSpeech = useCallback((text, turnId, onFirstChunk) => {
+    const cleaned = typeof text === 'string' ? text : (text == null ? '' : String(text));
+    const maxLen = 180;
+    const chunks = splitSpeech(cleaned, maxLen);
+    if (chunks.length === 0) return;
+
+    const tid = turnId || 'turn-default';
+    let nextSeq = turnSeqRef.current.get(tid) || 0;
+    let firstFiredForCall = false;
+    const wrappedFirst = onFirstChunk
+      ? () => {
+          if (firstFiredForCall) return;
+          firstFiredForCall = true;
+          try { onFirstChunk(); } catch (e) { /* user cb errors are non-fatal */ }
+        }
+      : null;
+
+    let chunksPushedThisCall = 0;
+    for (let i = 0; i < chunks.length; i += 1) {
+      const chunkText = chunks[i];
+      // Backpressure merge: count pending chunks for THIS turn already in
+      // the queue. If > 8, fold this chunk into the previous queued chunk
+      // for the same turn (capped at maxLen). This shrinks queue depth
+      // without losing words.
+      const pendingForTurn = audioQueueRef.current.filter((j) => j.turnId === tid);
+      if (pendingForTurn.length > 8) {
+        // Find the last queued chunk for this turn and try to extend it.
+        let lastIdx = -1;
+        for (let k = audioQueueRef.current.length - 1; k >= 0; k -= 1) {
+          if (audioQueueRef.current[k].turnId === tid) { lastIdx = k; break; }
+        }
+        if (lastIdx >= 0) {
+          const prev = audioQueueRef.current[lastIdx];
+          const merged = prev.text.length + 1 + chunkText.length <= maxLen
+            ? prev.text + ' ' + chunkText
+            : (prev.text.length < maxLen
+                ? (prev.text + ' ' + chunkText).slice(0, maxLen)
+                : prev.text);
+          if (merged !== prev.text) {
+            // If this is the first chunk of THIS call and the caller passed
+            // an onFirstChunk, chain it onto the merged job's existing
+            // onStart so the notification still fires when the merged chunk
+            // begins playback.
+            let chainedOnStart = prev.onStart;
+            if (chunksPushedThisCall === 0 && wrappedFirst) {
+              const prior = prev.onStart;
+              chainedOnStart = () => {
+                if (prior) { try { prior(); } catch (e) {} }
+                wrappedFirst();
+              };
+            }
+            audioQueueRef.current[lastIdx] = {
+              ...prev,
+              text: merged,
+              onStart: chainedOnStart,
+            };
+            chunksPushedThisCall += 1;
+            continue; // do not push a separate job; chunk merged
+          }
+          // If merge didn't change anything (prev already at maxLen), fall
+          // through and push as a new job — better to grow the queue than
+          // drop user-visible speech.
+        }
+      }
+
+      const job = {
+        turnId: tid,
+        seq: nextSeq,
         text: chunkText,
         // Attach the onFirstChunk callback only to the first chunk pushed
         // in THIS call. Callers that span multiple enqueueSpeech invocations
@@ -820,19 +904,11 @@ const Terminal = ({ blobConfig = {} }) => {
     }
     turnSeqRef.current.set(tid, nextSeq);
 
-    // Speaking flag flips on at enqueue time so the echo guard arms before
-    // the first /tts byte arrives. The flag is cleared by the drainer / the
-    // last source's onended handler.
     isJarvisSpeakingRef.current = true;
 
     drainAudioQueue();
   }, [drainAudioQueue]);
 
-  /**
-   * Legacy single-chunk enqueue retained for the streaming sentence flusher
-   * and confirmation/error paths. Routes through `enqueueSpeech` so it
-   * benefits from the single-drainer ordering and merge-backpressure.
-   */
   const enqueueSpeechChunk = useCallback((text, onStart) => {
     if (!text || !String(text).trim()) return;
     enqueueSpeech(text, 'turn-default', onStart);
@@ -846,16 +922,22 @@ const Terminal = ({ blobConfig = {} }) => {
       enqueueSpeechChunk(sanitizeSpokenText(text), onFirstChunk);
       return;
     }
-    const m = text.match(/^([\s\S]*?[,;:.!?\n])(\s+|$)/);
+    // Only flush on true sentence boundaries (. ! ? \n) or full clauses (65+ chars)
+    // Prevents breaking names like "Aditya" or phrases like "Right away" into separate chunks
+    const m = text.match(/^([\s\S]*?[.!?\n])(\s+|$)/);
     if (m) {
       const ready = m[1];
       sentenceBufRef.current = text.slice(ready.length).replace(/^\s+/, '');
       const cleaned = sanitizeSpokenText(ready);
       if (cleaned) enqueueSpeechChunk(cleaned, onFirstChunk);
-    } else if (text.length >= 25) {
-      sentenceBufRef.current = '';
-      const cleaned = sanitizeSpokenText(text);
-      if (cleaned) enqueueSpeechChunk(cleaned, onFirstChunk);
+    } else if (text.length >= 65) {
+      const commaMatch = text.match(/^([\s\S]{25,}[,;:]);?\s+/);
+      if (commaMatch) {
+        const ready = commaMatch[1];
+        sentenceBufRef.current = text.slice(ready.length).replace(/^\s+/, '');
+        const cleaned = sanitizeSpokenText(ready);
+        if (cleaned) enqueueSpeechChunk(cleaned, onFirstChunk);
+      }
     }
   }, [enqueueSpeechChunk]);
 
@@ -865,22 +947,6 @@ const Terminal = ({ blobConfig = {} }) => {
     flushPendingSentence(false, onFirstChunk);
   }, [flushPendingSentence]);
 
-  const dispatchLog = useCallback((text, status = 'success') => {
-    window.dispatchEvent(
-      new CustomEvent('jarvis-command-log', {
-        detail: {
-          time: new Date().toLocaleTimeString('en-US', {
-            hour12: false,
-            hour: 'numeric',
-            minute: 'numeric',
-          }),
-          text,
-          status,
-        },
-      })
-    );
-  }, []);
-
   const executeCommand = useCallback(
     async (payloads, confirmed = false, skipSpeak = false, securityPin = '') => {
       if (!Array.isArray(payloads) || payloads.length === 0) {
@@ -889,9 +955,6 @@ const Terminal = ({ blobConfig = {} }) => {
       }
 
       for (const payload of payloads) {
-        // UI-only actions never round-trip to the backend executor — they
-        // exist purely to drive HUD widgets via the local event bus
-        // (useUiBus). The smart router emits them after a normal speech ack.
         if (payload && payload.module === 'ui' && payload.action) {
           try {
             window.dispatchEvent(new CustomEvent('jarvis-ui', {

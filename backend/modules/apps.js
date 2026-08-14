@@ -22,11 +22,82 @@ function execFileAsync(command, args) {
   });
 }
 
-async function startTarget(target) {
-  const script = `Start-Process -FilePath ${psQuote(target)}`;
-  const { error, stderr } = await runPowerShell(script);
-  if (error) return { success: false, error: stderr || error.message };
-  return { success: true };
+function processNamesForTarget(lower) {
+  const processName = CLOSE_MAP[lower];
+  return processName ? [processName.replace(/\.exe$/i, '')] : [];
+}
+
+async function waitForProcess(processNames, timeoutMs = 7000) {
+  if (!processNames.length) return { success: true };
+
+  const script = `
+$names = ${psQuote(JSON.stringify(processNames))} | ConvertFrom-Json
+$deadline = (Get-Date).AddMilliseconds(${Math.min(15000, Math.max(500, timeoutMs))})
+do {
+    foreach ($name in $names) {
+        if (Get-Process -Name $name -ErrorAction SilentlyContinue) {
+            Write-Output "READY"
+            exit 0
+        }
+    }
+    Start-Sleep -Milliseconds 250
+} while ((Get-Date) -lt $deadline)
+Write-Output "NOT_READY"
+`;
+  const { stdout } = await runPowerShell(script);
+  return stdout.includes('READY')
+    ? { success: true }
+    : { success: false, error: 'Windows accepted the request, but the app did not start. Check that it is installed.' };
+}
+
+async function startTarget(target, expectedProcesses = []) {
+  const script = `
+$ErrorActionPreference = 'Stop'
+try {
+    Start-Process -FilePath ${psQuote(target)} -ErrorAction Stop | Out-Null
+    Write-Output "LAUNCH_REQUESTED"
+} catch {
+    Write-Error $_.Exception.Message
+    exit 1
+}
+`;
+  const { error, stderr, stdout } = await runPowerShell(script);
+  if (error || !stdout.includes('LAUNCH_REQUESTED')) {
+    return { success: false, error: stderr || error?.message || 'Windows could not start that app.' };
+  }
+  return waitForProcess(expectedProcesses);
+}
+
+async function launchWhatsApp() {
+  const script = `
+$ErrorActionPreference = 'Stop'
+try {
+    $desktopExe = Join-Path $env:LOCALAPPDATA 'WhatsApp\\WhatsApp.exe'
+    if (Test-Path $desktopExe) {
+        Start-Process -FilePath $desktopExe -ErrorAction Stop | Out-Null
+        Write-Output "LAUNCH_REQUESTED"
+        exit 0
+    }
+
+    $app = Get-StartApps | Where-Object { $_.Name -eq 'WhatsApp' } | Select-Object -First 1
+    if ($app -and $app.AppID) {
+        Start-Process -FilePath 'explorer.exe' -ArgumentList "shell:AppsFolder\\$($app.AppID)" -ErrorAction Stop | Out-Null
+        Write-Output "LAUNCH_REQUESTED"
+        exit 0
+    }
+
+    Write-Error 'WhatsApp Desktop is not installed or is not registered in the Start menu.'
+    exit 1
+} catch {
+    Write-Error $_.Exception.Message
+    exit 1
+}
+`;
+  const { error, stderr, stdout } = await runPowerShell(script);
+  if (error || !stdout.includes('LAUNCH_REQUESTED')) {
+    return { success: false, error: stderr || error?.message || 'WhatsApp could not be started.' };
+  }
+  return waitForProcess(['WhatsApp', 'WhatsAppBeta']);
 }
 
 function resolveOpenTarget(rawTarget) {
@@ -65,15 +136,14 @@ foreach ($chrome in $chromes) {
     $tabs = $chrome.FindAll([System.Windows.Automation.TreeScope]::Descendants, $tabCondition)
     foreach ($tab in $tabs) {
         if ($tab.Current.Name -match $keyword) {
-            $closeCond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, "Close")
-            $closeBtn = $tab.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $closeCond)
-            if ($closeBtn) {
-                $invokePattern = $closeBtn.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern) -as [System.Windows.Automation.InvokePattern]
-                if ($invokePattern) {
-                    $invokePattern.Invoke()
-                    $found = $true
-                    break
-                }
+            $selectionPattern = $tab.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern) -as [System.Windows.Automation.SelectionItemPattern]
+            if ($selectionPattern) {
+                $selectionPattern.Select()
+                Start-Sleep -Milliseconds 80
+                $shell = New-Object -ComObject WScript.Shell
+                $shell.SendKeys('^w')
+                $found = $true
+                break
             }
         }
     }
@@ -105,13 +175,15 @@ async function handleAppCommand(action, target) {
   if (action === 'open') {
     const openTarget = resolveOpenTarget(target);
     if (!openTarget) return { success: false, error: 'I cannot safely open that target.' };
-    return startTarget(openTarget);
+    if (lower === 'whatsapp') return launchWhatsApp();
+    return startTarget(openTarget, processNamesForTarget(lower));
   }
 
   if (action === 'close') {
     if (WEBSITE_TARGETS.has(lower) || TITLE_KEYWORDS[lower]) {
       const tabClosed = await closeWebsiteTab(lower);
       if (tabClosed) return { success: true };
+      return { success: false, error: `I could not find an open ${target} tab. I did not close your browser.` };
     }
 
     const processName = CLOSE_MAP[lower] || (isSafeLaunchName(lower) ? `${lower}.exe` : '');
@@ -215,4 +287,9 @@ if ($procs) {
   return { success: false, error: 'Unknown app action.' };
 }
 
-module.exports = { handleAppCommand };
+module.exports = {
+  handleAppCommand,
+  // Exported as pure helpers for regression tests; execution stays private.
+  processNamesForTarget,
+  resolveOpenTarget,
+};
