@@ -922,7 +922,7 @@ const Terminal = ({ blobConfig = {} }) => {
       enqueueSpeechChunk(sanitizeSpokenText(text), onFirstChunk);
       return;
     }
-    // Only flush on true sentence boundaries (. ! ? \n) or full clauses (65+ chars)
+    // Only flush on true sentence endings (. ! ? \n) or full clauses (65+ chars)
     // Prevents breaking names like "Aditya" or phrases like "Right away" into separate chunks
     const m = text.match(/^([\s\S]*?[.!?\n])(\s+|$)/);
     if (m) {
