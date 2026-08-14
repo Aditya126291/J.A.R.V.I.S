@@ -33,6 +33,7 @@ const path = require('path');
 const crypto = require('crypto');
 const googleTTS = require('google-tts-api');
 const { EdgeTTS } = require('node-edge-tts');
+const config = require('./config');
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -403,6 +404,66 @@ function renderGoogleTts(text, lang) {
   });
 }
 
+/**
+ * Render `text` via ElevenLabs API and resolve with the full MP3 buffer.
+ * Tries requested voice first; if 402/library-restricted on free tier, retries with premade voice.
+ */
+function renderElevenLabsTts(text, apiKey, voiceId) {
+  return new Promise((resolve, reject) => {
+    if (!apiKey) return reject(new Error('ElevenLabs API key is missing'));
+    const targetVoice = voiceId || config.elevenlabsVoiceId || 'JBFqnCBsd6RMkjVDRZzb';
+    const payload = JSON.stringify({
+      text,
+      model_id: 'eleven_multilingual_v2',
+      voice_settings: {
+        stability: 0.5,
+        similarity_boost: 0.75,
+      },
+    });
+
+    const attemptCall = (vid, isRetry = false) => {
+      const req = https.request(
+        `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(vid)}`,
+        {
+          method: 'POST',
+          headers: {
+            'Accept': 'audio/mpeg',
+            'Content-Type': 'application/json',
+            'xi-api-key': apiKey,
+            'Content-Length': Buffer.byteLength(payload),
+          },
+          timeout: EDGE_TIMEOUT_MS,
+        },
+        (res) => {
+          const chunks = [];
+          res.on('data', (c) => chunks.push(c));
+          res.on('end', () => {
+            const buf = Buffer.concat(chunks);
+            if (res.statusCode === 200 && buf.length > 0) {
+              return resolve(buf);
+            }
+            if (!isRetry && (res.statusCode === 402 || res.statusCode === 400)) {
+              // Fallback to premade free-tier voice (George - Warm, British/English)
+              return attemptCall('JBFqnCBsd6RMkjVDRZzb', true);
+            }
+            reject(new Error(`ElevenLabs HTTP ${res.statusCode}: ${buf.toString().slice(0, 150)}`));
+          });
+        }
+      );
+
+      req.on('error', (err) => reject(err));
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('ElevenLabs request timed out'));
+      });
+      req.write(payload);
+      req.end();
+    };
+
+    attemptCall(targetVoice);
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Failure logging
 // ---------------------------------------------------------------------------
@@ -486,32 +547,48 @@ function createTtsHandler(opts = {}) {
       return;
     }
 
-    // ---- Primary engine --------------------------------------------------
-    const tryRender = async (engineId) => {
-      const fn = renderers[engineId];
-      const buf = engineId === ENGINE_EDGE ? await fn(cleanText, voice) : await fn(cleanText, lang);
-      if (!buf || !buf.length) {
-        throw new Error(`${engineId} returned empty buffer`);
-      }
-      return buf;
-    };
-
     let buffer = null;
     let primaryError = null;
-    try {
-      buffer = await tryRender(primary);
-    } catch (err) {
-      primaryError = err;
-      if (logger && typeof logger.warn === 'function') {
-        logger.warn(`[TTS] ${primary} failed, retrying with ${alternate}: ${errorMessage(err)}`);
+
+    // ---- Tier 1: ElevenLabs Primary Key ----------------------------------
+    if (config.elevenlabsPrimaryApiKey) {
+      try {
+        buffer = await renderElevenLabsTts(cleanText, config.elevenlabsPrimaryApiKey, config.elevenlabsVoiceId);
+      } catch (err) {
+        if (logger && typeof logger.warn === 'function') {
+          logger.warn(`[TTS] ElevenLabs primary key failed: ${errorMessage(err)}`);
+        }
       }
     }
 
-    // ---- Alternate engine (single retry) ---------------------------------
+    // ---- Tier 2: ElevenLabs Secondary Key (if configured) ---------------
+    if (!buffer && config.elevenlabsSecondaryApiKey) {
+      try {
+        buffer = await renderElevenLabsTts(cleanText, config.elevenlabsSecondaryApiKey, config.elevenlabsVoiceId);
+      } catch (err) {
+        if (logger && typeof logger.warn === 'function') {
+          logger.warn(`[TTS] ElevenLabs secondary key failed: ${errorMessage(err)}`);
+        }
+      }
+    }
+
+    // ---- Tier 3: EdgeTTS Primary Fallback -------------------------------
+    if (!buffer) {
+      try {
+        buffer = await renderers[primary](cleanText, voice);
+      } catch (err) {
+        primaryError = err;
+        if (logger && typeof logger.warn === 'function') {
+          logger.warn(`[TTS] ${primary} failed, retrying with ${alternate}: ${errorMessage(err)}`);
+        }
+      }
+    }
+
+    // ---- Tier 4: GoogleTTS Backup Fallback ------------------------------
     let alternateError = null;
     if (!buffer) {
       try {
-        buffer = await tryRender(alternate);
+        buffer = await renderers[alternate](cleanText, lang);
       } catch (err) {
         alternateError = err;
       }
@@ -535,6 +612,7 @@ function createTtsHandler(opts = {}) {
 
     // ---- Stream success --------------------------------------------------
     // Headers FIRST so the first byte is `audio/mpeg`-tagged.
+    cache.set(cacheKey, buffer);
     setAudioHeaders(res);
     writeChunked(res, buffer);
     res.end();

@@ -43,6 +43,9 @@ const config = {
   geminiFallbackModel: process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.1-flash-live-preview',
   ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
   ollamaModel: process.env.OLLAMA_MODEL || 'gemma4:26b',
+  elevenlabsPrimaryApiKey: process.env.ELEVENLABS_PRIMARY_API_KEY || '',
+  elevenlabsSecondaryApiKey: process.env.ELEVENLABS_SECONDARY_API_KEY || '',
+  elevenlabsVoiceId: process.env.ELEVENLABS_VOICE_ID || 'DXFkLCBUTmvXpp2QwZjA',
   securityPin: process.env.JARVIS_SECURITY_PIN || '',
   reload() {
     loadDotEnv(envPath, true);
@@ -54,6 +57,9 @@ const config = {
     this.geminiFallbackModel = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.1-flash-live-preview';
     this.ollamaBaseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
     this.ollamaModel = process.env.OLLAMA_MODEL || 'gemma4:26b';
+    this.elevenlabsPrimaryApiKey = process.env.ELEVENLABS_PRIMARY_API_KEY || '';
+    this.elevenlabsSecondaryApiKey = process.env.ELEVENLABS_SECONDARY_API_KEY || '';
+    this.elevenlabsVoiceId = process.env.ELEVENLABS_VOICE_ID || 'DXFkLCBUTmvXpp2QwZjA';
     this.securityPin = process.env.JARVIS_SECURITY_PIN || '';
     console.log('[CONFIG] Environment variables and configuration dynamically reloaded.');
   }
