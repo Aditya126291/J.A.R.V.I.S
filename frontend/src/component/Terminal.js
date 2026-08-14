@@ -863,6 +863,22 @@ const Terminal = ({ blobConfig = {} }) => {
     flushPendingSentence(false, onFirstChunk);
   }, [flushPendingSentence]);
 
+  const dispatchLog = useCallback((text, status = 'success') => {
+    window.dispatchEvent(
+      new CustomEvent('jarvis-command-log', {
+        detail: {
+          time: new Date().toLocaleTimeString('en-US', {
+            hour12: false,
+            hour: 'numeric',
+            minute: 'numeric',
+          }),
+          text,
+          status,
+        },
+      })
+    );
+  }, []);
+
   const executeCommand = useCallback(
     async (payloads, confirmed = false, skipSpeak = false, securityPin = '') => {
       if (!Array.isArray(payloads) || payloads.length === 0) {
