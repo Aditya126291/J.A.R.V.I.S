@@ -1,4 +1,4 @@
-export const API_BASE_URL = process.env.REACT_APP_JARVIS_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.REACT_APP_JARVIS_API_URL || 'http://localhost:5000';
 const SESSION_ID_KEY = 'jarvis.conversationSessionId';
 
 const cache = new Map();

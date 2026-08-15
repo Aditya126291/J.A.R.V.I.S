@@ -1,16 +1,16 @@
 # Graph Report - J.A.R.V.I.S - Copy - Copy  (2026-08-15)
 
 ## Corpus Check
-- 98 files · ~317,635 words
+- 100 files · ~318,864 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 889 nodes · 1616 edges · 91 communities (78 shown, 13 thin omitted)
+- 908 nodes · 1650 edges · 87 communities (74 shown, 13 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 2 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `946f545a`
+- Built from commit: `6cdee315`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -52,13 +52,8 @@
 - [[_COMMUNITY_Community 52|Community 52]]
 - [[_COMMUNITY_Community 53|Community 53]]
 - [[_COMMUNITY_Community 54|Community 54]]
-- [[_COMMUNITY_Community 55|Community 55]]
 - [[_COMMUNITY_Community 56|Community 56]]
 - [[_COMMUNITY_Community 57|Community 57]]
-- [[_COMMUNITY_Community 58|Community 58]]
-- [[_COMMUNITY_Community 59|Community 59]]
-- [[_COMMUNITY_Community 60|Community 60]]
-- [[_COMMUNITY_Community 61|Community 61]]
 - [[_COMMUNITY_Community 62|Community 62]]
 - [[_COMMUNITY_Community 63|Community 63]]
 - [[_COMMUNITY_Community 65|Community 65]]
@@ -74,12 +69,12 @@
 - [[_COMMUNITY_Community 90|Community 90]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `runPowerShell()` - 28 edges
+1. `runPowerShell()` - 32 edges
 2. `useUiBus()` - 20 edges
 3. `chatStream()` - 19 edges
-4. `jsonRequest()` - 19 edges
-5. `handleAppCommand()` - 16 edges
-6. `psQuote()` - 15 edges
+4. `handleAppCommand()` - 19 edges
+5. `psQuote()` - 19 edges
+6. `jsonRequest()` - 19 edges
 7. `normalizePayload()` - 13 edges
 8. `loadJson()` - 13 edges
 9. `JARVIS — Pending Work` - 13 edges
@@ -90,26 +85,26 @@
   backend/modules/ai_router.js → C:/Users/Aditya Kumar/OneDrive/Desktop/J.A.R.V.I.S/backend/modules/web.js
 - `chatStream()` --calls--> `formatWebResult()`  [INFERRED]
   backend/modules/ai_router.js → C:/Users/Aditya Kumar/OneDrive/Desktop/J.A.R.V.I.S/backend/modules/web.js
-- `executePayload()` --calls--> `handlePowerCommand()`  [EXTRACTED]
-  backend/server.js → C:/Users/Aditya Kumar/OneDrive/Desktop/J.A.R.V.I.S/backend/modules/power.js
-- `executePayload()` --calls--> `handleMediaCommand()`  [EXTRACTED]
-  backend/server.js → C:/Users/Aditya Kumar/OneDrive/Desktop/J.A.R.V.I.S/backend/modules/media.js
-- `executePayload()` --calls--> `handleFilesCommand()`  [EXTRACTED]
-  backend/server.js → C:/Users/Aditya Kumar/OneDrive/Desktop/J.A.R.V.I.S/backend/modules/files.js
+- `executePayload()` --calls--> `handleProductivityCommand()`  [EXTRACTED]
+  backend/server.js → C:/Users/Aditya Kumar/OneDrive/Desktop/J.A.R.V.I.S/backend/modules/productivity.js
+- `executePayload()` --calls--> `handleWebCommand()`  [EXTRACTED]
+  backend/server.js → C:/Users/Aditya Kumar/OneDrive/Desktop/J.A.R.V.I.S/backend/modules/web.js
+- `runRadarScan()` --calls--> `runPowerShell()`  [EXTRACTED]
+  backend/server.js → C:/Users/Aditya Kumar/OneDrive/Desktop/J.A.R.V.I.S/backend/modules/utils.js
 
-## Communities (91 total, 13 thin omitted)
+## Communities (87 total, 13 thin omitted)
 
 ### Community 0 - "Community 0"
-Cohesion: 0.04
-Nodes (51): aiRouter, app, artifact, buffer, chunks, classification, cleanText, config (+43 more)
+Cohesion: 0.03
+Nodes (52): aiRouter, app, artifact, buffer, chunks, classification, cleanText, config (+44 more)
 
 ### Community 1 - "Community 1"
 Cohesion: 0.2
 Nodes (5): sanitizeSpokenText(), splitSpeech(), successMessage(), summarizePayload(), ttsUrl()
 
 ### Community 2 - "Community 2"
-Cohesion: 0.12
-Nodes (21): {
+Cohesion: 0.05
+Nodes (84): executePayload(), normalizeActionList(), {
   APP_MAP,
   CLOSE_MAP,
   WEBSITE_TARGETS,
@@ -120,7 +115,7 @@ Nodes (21): {
   isSafeUrlLike,
   isSafeProcessName,
   isSafeLaunchName,
-}, closeWebsiteTab(), { execFile }, execFileAsync(), fs, isSendKeyToken(), processNamesForTarget(), resolveOpenTarget() (+13 more)
+}, closeWebsiteTab(), { execFile }, execFileAsync(), findLaunchableTarget(), fs (+76 more)
 
 ### Community 3 - "Community 3"
 Cohesion: 0.18
@@ -128,7 +123,7 @@ Nodes (22): AUDIT_FILE, compactExpiredSessions(), compactSession(), createSessio
 
 ### Community 4 - "Community 4"
 Cohesion: 0.05
-Nodes (78): aiRouter, delay(), runDiagnostics(), actionTag(), addToHistory(), balanceBraces(), buildMessages(), callEmergency() (+70 more)
+Nodes (77): aiRouter, delay(), runDiagnostics(), actionTag(), addToHistory(), balanceBraces(), buildMessages(), callEmergency() (+69 more)
 
 ### Community 5 - "Community 5"
 Cohesion: 0.13
@@ -227,16 +222,12 @@ Cohesion: 0.16
 Nodes (8): readStoredMode(), useUIMode(), VALID_MODES, App(), GamerSlot, NAV_ITEMS, SECTION_META, linkElement
 
 ### Community 53 - "Community 53"
-Cohesion: 0.28
-Nodes (11): isSafeHost(), psQuote(), handleNetworkCommand(), { isSafeHost, psQuote }, { runPowerShell }, { exec }, fs, os (+3 more)
+Cohesion: 0.2
+Nodes (4): EventEmitter, GlobalHotkeyManager, path, { spawn }
 
 ### Community 54 - "Community 54"
 Cohesion: 0.39
 Nodes (7): after, aiRouter, before, entries, [entry], fresh, snapshot
-
-### Community 55 - "Community 55"
-Cohesion: 0.22
-Nodes (11): clampNumber(), HOME_DIR, isPlainObject(), isSafeDesktopName(), normalizePayload(), os, path, RISKY_ACTIONS (+3 more)
 
 ### Community 56 - "Community 56"
 Cohesion: 0.43
@@ -245,22 +236,6 @@ Nodes (6): computeBackoffDelay(), createWsClient(), decodePayloadShape(), defaul
 ### Community 57 - "Community 57"
 Cohesion: 0.17
 Nodes (4): cachedJson(), getAiStatus(), getAuditLog(), getSecurityMatrix()
-
-### Community 58 - "Community 58"
-Cohesion: 0.29
-Nodes (8): launchWhatsApp(), startTarget(), waitForProcess(), handleMediaCommand(), { runPowerShell }, handlePowerCommand(), { runPowerShell }, runPowerShell()
-
-### Community 59 - "Community 59"
-Cohesion: 0.32
-Nodes (11): normalizeSimpleText(), DEEPLINKS, focusGuardPrelude(), handleMessageCommand(), handleTelegram(), handleWhatsApp(), normalizePhone(), openProtocol() (+3 more)
-
-### Community 60 - "Community 60"
-Cohesion: 0.35
-Nodes (8): executePayload(), handleAppCommand(), { clampNumber }, handleSystemCommand(), { runPowerShell }, { handleAppCommand }, { handleSystemCommand }, handleWorkspaceCommand()
-
-### Community 61 - "Community 61"
-Cohesion: 0.42
-Nodes (7): DOWNLOADS_DIR, safeDesktopPath(), { DOWNLOADS_DIR, safeDesktopPath }, fs, handleFilesCommand(), path, { runPowerShell }
 
 ### Community 81 - "Community 81"
 Cohesion: 0.25
@@ -287,7 +262,7 @@ Cohesion: 0.7
 Nodes (3): fmtSec(), NowPlaying(), getNowPlaying()
 
 ## Knowledge Gaps
-- **189 isolated node(s):** `aiRouter`, `keys`, `models`, `express`, `cors` (+184 more)
+- **194 isolated node(s):** `aiRouter`, `keys`, `models`, `express`, `cors` (+189 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **13 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -296,15 +271,15 @@ _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `pingModel()` connect `Community 35` to `Community 4`?**
   _High betweenness centrality (0.019) - this node is a cross-community bridge._
-- **Why does `requiresConfirmation()` connect `Community 51` to `Community 0`, `Community 4`, `Community 55`?**
+- **Why does `runPowerShell()` connect `Community 2` to `Community 0`, `Community 49`?**
   _High betweenness centrality (0.008) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `chatStream()` (e.g. with `handleWebCommand()` and `formatWebResult()`) actually correct?**
   _`chatStream()` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `aiRouter`, `keys`, `models` to the rest of the system?**
-  _189 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _194 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 0` be split into smaller, more focused modules?**
-  _Cohesion score 0.04 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.03 - nodes in this community are weakly interconnected._
 - **Should `Community 2` be split into smaller, more focused modules?**
-  _Cohesion score 0.12 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.05 - nodes in this community are weakly interconnected._
 - **Should `Community 4` be split into smaller, more focused modules?**
   _Cohesion score 0.05 - nodes in this community are weakly interconnected._

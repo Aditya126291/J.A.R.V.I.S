@@ -36,8 +36,8 @@
     "hash": "5af6b273efa3c6c5dbd3696797b9df45"
   },
   "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\server.js": {
-    "mtime": 1786273046.8212771,
-    "hash": "6b4d4e50865b9c2176ce80b4d6f90c13"
+    "mtime": 1786786562.6617315,
+    "hash": "136d1b579f30e0de575972e5014509ec"
   },
   "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\tester_agent.js": {
     "mtime": 1778775057.608849,
@@ -112,8 +112,8 @@
     "hash": "c3f41d075dd8350b195d724f42e2deca"
   },
   "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\modules\\apps.js": {
-    "mtime": 1786736952.774587,
-    "hash": "296589c470cffc69e668413dadac496c"
+    "mtime": 1786738246.2851722,
+    "hash": "a703722a8c7097299de8697987987429"
   },
   "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\modules\\assistant_sessions.js": {
     "mtime": 1785663748.946818,
@@ -150,6 +150,10 @@
   "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\modules\\gemini_health.js": {
     "mtime": 1782916189.855335,
     "hash": "27305760c034a1ccf54eac8dbe7b698c"
+  },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\modules\\global_hotkey.js": {
+    "mtime": 1786786527.0721207,
+    "hash": "f8196ae81b69e6b8fec829529d0600b5"
   },
   "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\modules\\media.js": {
     "mtime": 1778484945.1332884,
@@ -192,8 +196,8 @@
     "hash": "f172eb9fac2310d2596bf8d6d1a36b0b"
   },
   "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\modules\\tts.js": {
-    "mtime": 1786736728.9707813,
-    "hash": "68072eca7a19388e7a7ca189895174ca"
+    "mtime": 1786737051.7089636,
+    "hash": "b8e62bb346ed96b05c2948eccc1122bb"
   },
   "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\modules\\utils.js": {
     "mtime": 1778773856.6326458,
@@ -211,9 +215,13 @@
     "mtime": 1782916189.8583531,
     "hash": "97f6fb4eb4a1894dc62c9a20e4efbe42"
   },
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\scripts\\hotkey_listener.ps1": {
+    "mtime": 1786786511.4488678,
+    "hash": "251f91f36ae1c3e6c945267d5b295d27"
+  },
   "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\tests\\apps.test.js": {
-    "mtime": 1786736955.351831,
-    "hash": "e5a0a1f742e2b811eb022515079037f9"
+    "mtime": 1786737880.0621026,
+    "hash": "24d2d8bd0795bd96171d432bfc73be2e"
   },
   "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\tests\\architecture_upgrade.test.js": {
     "mtime": 1786736954.0719826,
@@ -244,8 +252,8 @@
     "hash": "f134ed4f48576532eab20bf6843400fc"
   },
   "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\frontend\\src\\api.js": {
-    "mtime": 1786273071.5339832,
-    "hash": "d59c0a03d3f4780e837adaf5e3f9bb7b"
+    "mtime": 1786786583.080358,
+    "hash": "b8bb5e211bd1e32ae9dad6bd1a611f3e"
   },
   "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\frontend\\src\\App.js": {
     "mtime": 1785665648.377848,
@@ -340,8 +348,8 @@
     "hash": "b306503613cc449e83cb0325bd8d5654"
   },
   "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\frontend\\src\\component\\Terminal.js": {
-    "mtime": 1786273171.0544794,
-    "hash": "79c0e3a665f1c216cc16c4daf3c8a1e5"
+    "mtime": 1786786596.5169458,
+    "hash": "ba33ab8b6d0e4ea5a63a2ef6da408be9"
   },
   "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\frontend\\src\\component\\TimePomodoro.js": {
     "mtime": 1782916189.8855796,
@@ -419,312 +427,112 @@
     "mtime": 1782916189.9333253,
     "hash": "7b4388a384f4af31f9f8034c0418ddb3"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\0144826a7f5cdb898d88911c9fc7fb88370fddd359d29e8a968bbf0a4f445578.mp3": {
-    "mtime": 1785159936.2435024,
-    "hash": "b85b921c8317510b18004dfc63ce6838"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\424da55ddbe5ee6c971ef219aa5f4f1175fb78d3cc13e2a0fe0a369c071ac49e.mp3": {
+    "mtime": 1786737798.6943421,
+    "hash": "d3d0d07f35ba7e77556d31a86f580d2b"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\021c303b9f28cd2bf854a0c8a551cc0b0e92f5b72e418b302966a149e628ad1d.mp3": {
-    "mtime": 1782917100.3348198,
-    "hash": "010f9d5f166cf79e0bacc7714c093874"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\42c7fcfa3f52006a7fb81430a9766d4d878042c224b4a6f28676bb4903cf4ba3.mp3": {
+    "mtime": 1786786258.4257984,
+    "hash": "a61d7cf14a14b4c937dec63fbd4d1ea8"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\06a5243c9ae0335139abff6c9caa3612f86b6f5688a0a94368fcfa319803d533.mp3": {
-    "mtime": 1785159791.7470756,
-    "hash": "54f5f927db89a82057ce9fd3fdc488bf"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\093a30f02efa74ac7ed340e5fe87c62693fda2b4643a85546275a43a6ffab3ff.mp3": {
-    "mtime": 1784900960.7405145,
-    "hash": "fd499fe1e820be94ebcfa2a00c944d5f"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\0ac545983b651686cdd6da1c1e1b1720c28387d97ccd1a8bc54ec195c286f0c6.mp3": {
-    "mtime": 1784898950.2925515,
-    "hash": "dc1bd7f6e4a2e5ef84acba94b7d4106e"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\0d02b9bb9685b4ec8fa934a9787d10a513d4d3fe76e0ec8c2dc8830eb25a9592.mp3": {
-    "mtime": 1786736006.6469762,
-    "hash": "c1aaad7ceb1c695d1544012d5c07ea69"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\1239af54e4a24e3e4b8c08e4d1d5b08d7dfeebf672e5bd6ca43607759303a559.mp3": {
-    "mtime": 1786736005.321,
-    "hash": "09451402c240190a9c27105673fce4ae"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\1849069954ec8ec2901a1b32653a0b5f5b46327570cf8af2a5352795ef318c38.mp3": {
-    "mtime": 1786736005.311,
-    "hash": "d903c528aba1b9f5d8da819ab79d6995"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\1a9cbc5fe74a02275f4b18537d9b5bc18b084e02d596f4588b50b289cf3bccc5.mp3": {
-    "mtime": 1785161603.8426104,
-    "hash": "5a29575625bcbb7bb1dc6d940c394bb2"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\1cb787ab00e36f961fb70e4083dce25d55e6add257af41130a031bbdceaac4d0.mp3": {
-    "mtime": 1785661874.74777,
-    "hash": "f74c0522d6f7149d7776c3a6b86da702"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\1dd669627656d0003a884a7e75be2ef44ddf8059aa8b0b16c35f2e552c25b396.mp3": {
-    "mtime": 1785162014.5921416,
-    "hash": "889c5d90f52ba41aa7849729f8e76b82"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\2193805598c2f8ab4b47f8677b28ff2116226f93f4a3e56347313f1c3a39d818.mp3": {
-    "mtime": 1784901043.067335,
-    "hash": "dd6e7539b8675d668355540548b44626"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\25f425d9588aed5420214c8408b34be198c44a3727ddee53c529093fdacbd742.mp3": {
-    "mtime": 1786736640.5362294,
-    "hash": "98aa1e2ecf0a03f916a8d61ab4d4a1a1"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\2616f174866f5dc39595507ab302690fb905da285dfe9b52d39393423c7055be.mp3": {
-    "mtime": 1784905072.444,
-    "hash": "5413d2a5c80501563e2177085b6a550a"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\27af2da92ed78c3392ff1b9f0fe8c29558f6215656f11c6b55401e40ec8e2735.mp3": {
-    "mtime": 1785159873.3452227,
-    "hash": "1fc4ef94f72b93448dae31c44ddb13c0"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\28f8c09cebb9a7857b047cf3b904a1a55aff6fe16c75fd63065f1ba28a172179.mp3": {
-    "mtime": 1786272363.3451233,
-    "hash": "0146f33032aac450933b62192f1c37e8"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\2c1eae699b144ab045aa6aebb61fea9c9f02101c87b76dca4e65d608522262a7.mp3": {
-    "mtime": 1785160932.0338078,
-    "hash": "6e30c5e4e28c748aa2e68c2d6be1c475"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\2c4ed93941f276031724d62adb965fb96354d68cb78c7cd4f74250fdf4231d1e.mp3": {
-    "mtime": 1784900427.4205241,
-    "hash": "5287cca9c61b3c74e19b7776bf6f3f82"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\3242efda6134c0dd0f38d4d6c88d6585fd944cccb07941e3ed7a09944a85681f.mp3": {
-    "mtime": 1785160813.5426357,
-    "hash": "5f553a4bb0025fb1d8160d904c9561f8"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\32f8ba8348554f8e9f3d1a003243c2dfa78c4d8bca20396dcfa48a6392ef3d44.mp3": {
-    "mtime": 1785661826.3961477,
-    "hash": "038a8a7a6be7dcdea007a023011a97ea"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\3318000118058ba5aee5cd25262e3f6ce72dfd79d3a9b9e210571062c11869e0.mp3": {
-    "mtime": 1785661827.2302928,
-    "hash": "b0ee82e775186fcd566036e8a78fc26e"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\40dd67628a4ea358139cadac57e23e5fb2b2194cbe69881dac3cff52295ea48e.mp3": {
-    "mtime": 1785661937.713657,
-    "hash": "052afb15fb4ece3b0644d2d67d55bb56"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\4795e20d9f40c57e42592cb68ffeea9861efc33b098ce5f91c02ba7d6831616c.mp3": {
-    "mtime": 1786736874.0900505,
-    "hash": "531a3bd4a45030fa4b82c11a7c025893"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\48f5a640976482efa0f896c81414f9751f39095827f2b8d7581d5635b6ede428.mp3": {
-    "mtime": 1784898987.7139351,
-    "hash": "860e79491b00896d6c5fce0e12aefb98"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\49bce98e6ddb730be84808459861ab283305c7d51f9c3bc519eeb6736ee4b20c.mp3": {
-    "mtime": 1785162013.5832567,
-    "hash": "83c45a771747147c929adb7ccde13e4f"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\4cf2673f9f3201c060755ca97249135d76f3b9cc45163f715ffe0934f4faf010.mp3": {
-    "mtime": 1785160645.2723,
-    "hash": "943ec1b7a112dd3ceb70904f92ba9bb8"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\4a46241795e222634bd9eff7d7b946f23c397684ea3a7d915bcc0ccc819e4c4a.mp3": {
+    "mtime": 1786786196.5841615,
+    "hash": "bc53dc8404b9dd9ab6a112f9720c2549"
   },
   "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\4d085c54a3317910df6bd6ac3d2e790ac6bf294c5233d80ea84aadd1699a9a62.mp3": {
-    "mtime": 1785661888.7313826,
-    "hash": "8e154649862e320ad5a51e0b35cf2c33"
+    "mtime": 1786737060.425972,
+    "hash": "6f331148f8ff019cca69ccb2f4ac77a6"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\4eacbd6466f766c1ace7ae0f05b9f18e5b494b20a808c74add02a87025be35bb.mp3": {
-    "mtime": 1785160614.105991,
-    "hash": "72c545aaef70cdde28b097e249ecc16d"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\4f1fa2fbb3e1827f7e25e8ba09d5785efaabedf1ea84c0f232fe55d398cf36fa.mp3": {
+    "mtime": 1786786197.778329,
+    "hash": "aba2a128d8d3fe4c89ec124b0aa386aa"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\55a0c7e3b580eb7ad99e6c5705bb02562ad6dc97237d352fa8bcb54d117842cf.mp3": {
-    "mtime": 1785661936.2862566,
-    "hash": "aae44f93df0f81be7432d225e6fc0e18"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\6275d7867e25e502e6b337a99dfcdff65d6660feb404693c6676b4d302de4b4b.mp3": {
+    "mtime": 1786737828.986106,
+    "hash": "217d12511f2e340d121d42c3a6c81cc9"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\561982b0fa6f42adb3540132fc9849d6dc231e4822e17e39aef24e5bee55442b.mp3": {
-    "mtime": 1786736872.860532,
-    "hash": "23be9588b3c86454ea2cd4a2ff534912"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\6cdd49e6abe96235cf7e92d9762c94ddcba37332aef0341d5af06994e78ac2d9.mp3": {
+    "mtime": 1786737825.752413,
+    "hash": "ce33d12b0fd6f4cefff30f4167b74629"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\5ee795cc6442963322ab532310b208df1e5880d1a523021603d592b9307ad62c.mp3": {
-    "mtime": 1785661847.1140447,
-    "hash": "4036a6b36941cbf12c659dcc1673c0f8"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\7958c9cd8b88de21e0a162fb958afcbb55ee398c3049bf510d157e1af55c82ca.mp3": {
+    "mtime": 1786737061.526934,
+    "hash": "14c4195625d5f3f36ce069611fe82330"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\604edc7bd45a3b204511240255ed268b428aadb6ca0f1d12446aaba928ad8d96.mp3": {
-    "mtime": 1786736641.2798445,
-    "hash": "8a249f77922ac1b76f4ff1053e5127c7"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\7a1c1b9f2b04671c6aabfca0dc06cbec3026279826c041fa01dbd4bd0c1624aa.mp3": {
+    "mtime": 1786737749.102303,
+    "hash": "038798a048ca099bd8e4d1e9a57ae98f"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\625f86c5c93bf7b2da6a9edf2afa0b6a8c3d8c18711633a0111c4a852397f8b9.mp3": {
-    "mtime": 1785159931.923558,
-    "hash": "fb0f201c2803bbeae351455b86ea0dca"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\7b9b3474b0196d18b6cf4e1d961e16013d0ba4bd8db7d8e2b0c87a86e846a15c.mp3": {
+    "mtime": 1786737813.808558,
+    "hash": "14501262c77be08aa0e487d4daefe9d7"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\62e3a2611e56a54546a0620ca5e9e462cc3967677d95669c9e44bcc7de8d631a.mp3": {
-    "mtime": 1785159790.7488828,
-    "hash": "a062197cb4d045c6d22f12caee344f78"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\967db851a3fd8f3c1a8049d6d43a6eb1705e691589ccb85e191570c200d18d2d.mp3": {
+    "mtime": 1786737079.3598673,
+    "hash": "36a717210f6f42f65cae435aaae18eac"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\67cec45cf39c2963e271d6124f348e56b503837933470083ec3000049517e788.mp3": {
-    "mtime": 1784901033.007951,
-    "hash": "4fd38b1f48d4e62ec1f73b7056eb554c"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\a92e1ee92017a6255d3c36b948dc62783a66920f6819be8d2fbbe715ef1c4948.mp3": {
+    "mtime": 1786737772.0139098,
+    "hash": "395b4d6beec2000aaeec98c09ed590e4"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\691cb5ae7b14e88e84f69e70c953ad82c63d01c5e75d5db6d0ff0213c386ea3a.mp3": {
-    "mtime": 1785159951.591467,
-    "hash": "eb656764ab14c7e642d6f07e25d52387"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\aff0aed92835bb0efeeda8dac95e6791dbc7aace29121b6a3df4e6d2b420339c.mp3": {
+    "mtime": 1786737557.9161432,
+    "hash": "79e45a420db8cf69d8feacaa76d10a29"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\69380e1c6c9b5f35e9895e4a8d9aa97f364d2bd7b0035ef618181a47da110960.mp3": {
-    "mtime": 1785160331.2032022,
-    "hash": "96d43aa80d5fe7aff4cea5963f8f09fd"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\b19ef3b3e24fd7828c2c4f53d6ee6bf115fb98999718c1365f2d087dbcf7ffc5.mp3": {
+    "mtime": 1786737573.4464238,
+    "hash": "4ff7fd229aa93ef4b8a1984dfbc775b0"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\6ecd8361fa53eb1b319bd342ff4d24ab58a1d9947bb1deb0c4d70837cae9f9a8.mp3": {
-    "mtime": 1785160612.7464828,
-    "hash": "dffc6dbd1fabbceddbf28f81349ba10d"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\b427ead41bbca4fb8560426a862e864d90453350574713fa49f4eb4a90cc6755.mp3": {
+    "mtime": 1786786270.8922288,
+    "hash": "b603bd1aa9c0b7508c5230389be01ada"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\6eeaa9aac293f1c1146094b6b339583f5818157e90c40f8fea6e4939af7eaeb3.mp3": {
-    "mtime": 1785159952.9846013,
-    "hash": "66b0439562cdbe10ecb4c11580879366"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\b67844ccf893d79ff744ef66282d2818d2c3bb2cf72141a453bab4484f5d8783.mp3": {
+    "mtime": 1786737570.2454147,
+    "hash": "bed6216db5733129676d50383067ba43"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\7180477528041aa39e91d3ab47c40f3fb7bbd8cd92737cc3840eb204580b90fa.mp3": {
-    "mtime": 1785160646.309121,
-    "hash": "8a36b0db01e80da165c4a0b8691e152b"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\bb24138b97fcbc8fb843bb06d793a031c026ca54cc7521be589615960e072ba3.mp3": {
+    "mtime": 1786737567.838596,
+    "hash": "14cee83089464dc6f1443732d5af4315"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\7188c04319e9f52b38eb10fb4296c6e4535a62cf634c342bdfbd61c0f678e189.mp3": {
-    "mtime": 1786736871.6854098,
-    "hash": "5bc3603bcfd7ae9b32184302daea5a27"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\c1558d946dc00f7d30e6de8d6b6b5f668a35f82425837aec4f2e654b64d40b6a.mp3": {
+    "mtime": 1786737831.538605,
+    "hash": "796a8c2513ffdcf8cc8d9b03e434081a"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\72d00fcb99a903fce6d457c960611fec5fdb704feb367e16251cbdbdecc79de5.mp3": {
-    "mtime": 1785159874.3873267,
-    "hash": "f6f1c94ec2c9fc60443293f6bc1784c7"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\c202a2a3f592918490b85bc728706c9ee59b09c9cf9e573feba73e5ceb2822f0.mp3": {
+    "mtime": 1786737773.077388,
+    "hash": "4fe292edb8a30dbb25b89b70b10a6c95"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\73b58f93c659244826181515bc78c879a35bbe33d55a76fe6825217450a2d575.mp3": {
-    "mtime": 1785159814.43022,
-    "hash": "aac98489fc6a84ccf905cfa2ffc62c8c"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\c2fc85ce8a8f51e76ae17d794b4a86f2078a8e20330fe65ccd0e1d977d00e864.mp3": {
+    "mtime": 1786737566.7888722,
+    "hash": "ff6af4fc4da52c7854fdb90bbaa1e71e"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\786031dc7fc4a103f70177eff1423cb7a62e5c73ae899f9e850aae608438bf11.mp3": {
-    "mtime": 1786736859.7676547,
-    "hash": "5bea45c3c3dea4aec2d6c9ca7ceb1fd3"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\c3d752f8653186e5937e119ceb04e55b3951290f13964fc048ed47d04a68dc68.mp3": {
+    "mtime": 1786786269.8170404,
+    "hash": "8c2006e304b967506cdbc53df78f0d51"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\7c5afa3a3438ce4dbf8386ab1002f5eb2acbbe7404c7f18341ee9a6e701de75c.mp3": {
-    "mtime": 1785661873.0506232,
-    "hash": "327f81484d9384dd1def153bb7d51779"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\d76a238e2b5b2387c7234cc9b9fca9165764a2bf7ecc84a0c47495787d771136.mp3": {
+    "mtime": 1786737812.6395745,
+    "hash": "207f9a424b2ba889b168de67a48c58d2"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\8525c96b9f03fc2ea0f4049759a0af15b1cbf064441de0cb09b5c53f0e461aba.mp3": {
-    "mtime": 1786736842.4851248,
-    "hash": "5c94ded6450b198cd4b70ebf835ef4f3"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\e03410a95f8c11fe60ba4e66f119f946986f43cb38b55b21eb541b18a72f2ee2.mp3": {
+    "mtime": 1786737078.2791872,
+    "hash": "de8da8050cfd083f580e0754f91af0da"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\8804ed69d4700568dcdac16cbe9ff3f9c4e0b2d6d8ce5103582fa295ade49359.mp3": {
-    "mtime": 1785160626.3495886,
-    "hash": "e0503fd21b194cb4fcbd8820e3bdc042"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\e1d779bd236fe616b67a12663d3449dd40ab6203d01a74078db54a92e8673332.mp3": {
+    "mtime": 1786737797.5421557,
+    "hash": "b5ba8f2f02f1a5a2b6000253d130ec12"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\8b0694c64b5e3bb4b124ba10533dccd7053c99c567e90ced8a5630217aeea7ff.mp3": {
-    "mtime": 1784899266.1300426,
-    "hash": "d8b9c2520c6f27cbf00656af32138454"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\e36a4066490b8d8ab84bd6f03b4e109b8034e132ceb4d3fee05b059a552d2a4a.mp3": {
+    "mtime": 1786737783.6610448,
+    "hash": "3f28ab9b1d1e332cad2e8facaf5b708e"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\8b745f1bd25d995e23f41504e61da0567dfbd955846d5a2da3c50619ea1021f1.mp3": {
-    "mtime": 1782917101.0747643,
-    "hash": "52f56557c4ef4714f3f8f26ab561d23b"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\e60096e86633f010ff80e65132e7d55b5c5d8c448b5b090939aba49b62772cbc.mp3": {
+    "mtime": 1786737575.86777,
+    "hash": "a5d02f5ee63f0db95963c0e167a3a908"
   },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\8da67a276314334810058d09cfdf171890395f7c9fac274b968ce92ea876952b.mp3": {
-    "mtime": 1784899241.1376288,
-    "hash": "c8f586abe03d2f6572480a594c3a065a"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\926c6b719a26e681fa17b256d219e74ca6aca8c6d07e70d0a1cdc45863ae0896.mp3": {
-    "mtime": 1785661889.7029092,
-    "hash": "c631c411f86c005bb7fb5ed1b135dc7f"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\997cd896e44c724e09eb526ad77f721ee6cf31ec66b6c152ba3795dffa6deb6b.mp3": {
-    "mtime": 1785159815.6801782,
-    "hash": "16d374a77f9837e412cff203c57726c2"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\99acb5fe76df7720ea15ab12502e35d83314f7278aded72f5ad68a010b1fcfd3.mp3": {
-    "mtime": 1786736666.1797168,
-    "hash": "b9bbe74367966fe79cc91de0f9137585"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\9c61f22051c59d24e9d455240948759ae5f52d24204630ee6102ad9e2838cedc.mp3": {
-    "mtime": 1784901665.8916514,
-    "hash": "2ffc92a518e8282440942fca212d0a16"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\9d8cdcef9137b7534cc1545d25400d443a1aa2c02af3e9badaa6f94a9e7118e6.mp3": {
-    "mtime": 1785159930.7835515,
-    "hash": "b325215f5d096bcbd8110bcff2cc3a20"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\ab3016ed8b4252e7bfc997e4884b74884dd4a82b6f76e3015190dd9be14c89f7.mp3": {
-    "mtime": 1785161675.81098,
-    "hash": "b63b9cff4f8537710bfe5e435ed9af30"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\ac64f1cf00d2dc4a1ca7c9cb93d7701e6c144570f690c004f03e87d6d444a497.mp3": {
-    "mtime": 1786272060.3370376,
-    "hash": "95d4d48f203e98357e37959c16768689"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\adda6177a8b8c157528c40aea1f26794181ffe4703667fdeaba758da9a78ae32.mp3": {
-    "mtime": 1785161602.7142978,
-    "hash": "2761ecbfea5f351d9df7217f32ef0e90"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\b0c0493b3fe2cc003c3fcb9e00a8e1d4b68a292f5274747999ab0bb41847adf9.mp3": {
-    "mtime": 1785160933.2100823,
-    "hash": "497f0f9a0599c55a6ee8bd42ca0058e6"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\b0c475add4b92a15055a5d1b5f62ca69e38b35f005f630763b235d50b8cb1310.mp3": {
-    "mtime": 1785159858.0858746,
-    "hash": "40bec69f5b29bde755d4cccff535a9a8"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\bc0b80023653a1a4c53fad81186e471949bde8bf36c8202334dfce04321f4dfb.mp3": {
-    "mtime": 1786736858.6994808,
-    "hash": "a3589393a3160d7a55966832f8e74ab6"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\c09ed981abd28b30e79ced3fcd9aadb88c54c15b3fa8d66194259889dda13871.mp3": {
-    "mtime": 1786736667.0718396,
-    "hash": "3e37e889b326b4078fcc7ae8eadc5626"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\c0a7e51852b588716e9fb44dc32e5c066252785d9dcf0244f0d5b6090b925ca0.mp3": {
-    "mtime": 1785162015.5865374,
-    "hash": "ae57cf0de7952d94d8eefb87b12816b2"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\c7b980392f153d92fb628026be40696016a89010f5aafef5d6d5072182ffd643.mp3": {
-    "mtime": 1784899240.28777,
-    "hash": "f64d41a4a5eaa473b004400b26ee5552"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\cb5ba4542ecf92b08e8b2dacc5313af99c881923eb6550fdf54d4c612f109cc6.mp3": {
-    "mtime": 1785161570.592598,
-    "hash": "4cd55cef9dddd4440f83a3a3d05d270b"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\d29f51fdc4bd6858f0b9bcb35c9008a18380d6a3fa2641b97a24ee82a7f969cc.mp3": {
-    "mtime": 1786272060.361,
-    "hash": "e092561d54175a8ccce2dfc260b25aff"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\d40dd41c9832ff2fbe4156f508beee5fba142769cb8812001a5e34cd501ad3cf.mp3": {
-    "mtime": 1785661848.6547651,
-    "hash": "af514b751802a9c379dd521f82a0b986"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\d75a5d0e53101b8dbb29cd69fcfda2c28dafd11a701096fe5707db0ea4e421f3.mp3": {
-    "mtime": 1785159937.6826708,
-    "hash": "25bb09646b611bd2ed55925111b18ab0"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\d96c34015669a6e6ebb0248ac95b87f2c54e9c008533a591c6c6c700b93c9ba1.mp3": {
-    "mtime": 1785161572.9918556,
-    "hash": "bc48e0efe3200fe701e7a46fb2b8f92a"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\db01013e3dc34041d5c37fae47eee5fd4ca2c1f1b209f1d287d1ba1910f5d7ea.mp3": {
-    "mtime": 1785159859.6496274,
-    "hash": "c99eb11293f8d72c2494a32b2666107f"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\db420e4d53d36f5853af9e7cf13eafac7943ff1f30526907777d4e948f3f098f.mp3": {
-    "mtime": 1785661890.7470343,
-    "hash": "442d9128e24ec2a1dc8e41f51a028605"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\df9c451f3e797c64a94da59181224513d47225a26e1ad42c94975bb5479f7dce.mp3": {
-    "mtime": 1786736875.1552286,
-    "hash": "ba48e6441c6091c542bf7d62aad5bd7c"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\e7ae7829c01f8009258197872a1e0ee9bdf0835e50d956a74e6a8056b62a7d66.mp3": {
-    "mtime": 1785161674.6916158,
-    "hash": "7dd5c76c5664e1f674e5ffadaf4903d0"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\e7e2f304713ccb984c108c1f9b49ba975b7da185d850ee862dbcffcdd5374180.mp3": {
-    "mtime": 1786736676.4523475,
-    "hash": "97695916a02b9458e45639a35848ae3c"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\eae5adc05f1453d4be1e80af91301325f8cb1b4063c65a91cfd7acaa617a5e1f.mp3": {
-    "mtime": 1784901400.6642442,
-    "hash": "364eb354c6b09e8d7f2253f1ccf65f76"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\ec342cc7c7c66362923113f1feaa80cfdffa0670b99c205cb13f07d1a3c67744.mp3": {
-    "mtime": 1785161574.0327244,
-    "hash": "ffb089b91b81ba3c71a14812a8ffbf05"
-  },
-  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\f9b8658bcb210fcf6a5421b6011a03f7be85a66fe4c795b9118f99355e1bcaa8.mp3": {
-    "mtime": 1784901044.1104352,
-    "hash": "fb3f4b1124c391f842852b73d1fdf1c4"
+  "C:\\Users\\Aditya Kumar\\OneDrive\\Desktop\\J.A.R.V.I.S - Copy - Copy\\backend\\cache\\tts\\f60659679a5fbd867cb3f51dc176c2627295b1e1cffbe03d1bdfa06e00e1e6e7.mp3": {
+    "mtime": 1786737559.1944098,
+    "hash": "569d6e8115c4924bbd50ecb7ab407306"
   }
 }
