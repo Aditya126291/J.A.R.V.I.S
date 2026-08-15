@@ -443,7 +443,6 @@ const Terminal = ({ blobConfig = {} }) => {
     { role: 'J.A.R.V.I.S', text: "Hello Aditya. I'm online and ready for your commands." }
   ]);
   const [liveSpeech, setLiveSpeech] = useState('');
-  const [fading, setFading] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
   const [providerLabel, setProviderLabel] = useState('READY');
   const [textInput, setTextInput] = useState('');
@@ -510,11 +509,7 @@ const Terminal = ({ blobConfig = {} }) => {
     }
   }, [chatHistory, liveSpeech]);
 
-  const resetFadeTimer = useCallback(() => {
-    setFading(false);
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => setFading(true), 20000);
-  }, []);
+  const resetFadeTimer = useCallback(() => {}, []);
 
   const ensureAudioCtx = useCallback(() => {
     if (!audioCtxRef.current) {
@@ -1270,7 +1265,6 @@ const Terminal = ({ blobConfig = {} }) => {
 
       setLiveSpeech(displayText);
       currentTranscriptRef.current = displayText;
-      resetFadeTimer();
     };
 
     recognition.onerror = (e) => {
@@ -1319,9 +1313,10 @@ const Terminal = ({ blobConfig = {} }) => {
     handleConfirm,
     ingestSpeechDelta,
     isListening,
-    resetFadeTimer,
     stopAllAudio,
     updateLastJarvis,
+  ]);
+
   return (
     <>
       {pendingAction && (
