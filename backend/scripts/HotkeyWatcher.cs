@@ -58,6 +58,9 @@ namespace JarvisHotkey {
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
 
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+
         [DllImport("user32.dll")]
         private static extern bool IsWindowVisible(IntPtr hWnd);
 
@@ -69,6 +72,9 @@ namespace JarvisHotkey {
 
         [DllImport("user32.dll")]
         private static extern bool BringWindowToTop(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool SwitchToThisWindow(IntPtr hWnd, bool fAltTab);
 
         [StructLayout(LayoutKind.Sequential)]
         private struct MSG {
@@ -91,7 +97,23 @@ namespace JarvisHotkey {
         private static bool _rightAltDown = false;
 
         static void Main(string[] args) {
-            _hookID = SetHook(_proc);
+            // WH_KEYBOARD_LL requires IntPtr.Zero as hMod in .NET
+            _hookID = SetWindowsHookEx(WH_KEYBOARD_LL, _proc, IntPtr.Zero, 0);
+
+            if (_hookID == IntPtr.Zero) {
+                // Fallback to module handle
+                using (Process curProcess = Process.GetCurrentProcess())
+                using (ProcessModule curModule = curProcess.MainModule) {
+                    _hookID = SetWindowsHookEx(WH_KEYBOARD_LL, _proc, GetModuleHandle(curModule.ModuleName), 0);
+                }
+            }
+
+            if (_hookID == IntPtr.Zero) {
+                Console.WriteLine("ERROR:HOOK_FAILED:" + Marshal.GetLastWin32Error());
+                Console.Out.Flush();
+                return;
+            }
+
             Console.WriteLine("INITIALIZED");
             Console.Out.Flush();
 
@@ -102,13 +124,6 @@ namespace JarvisHotkey {
             }
 
             UnhookWindowsHookEx(_hookID);
-        }
-
-        private static IntPtr SetHook(LowLevelKeyboardProc proc) {
-            using (Process curProcess = Process.GetCurrentProcess())
-            using (ProcessModule curModule = curProcess.MainModule) {
-                return SetWindowsHookEx(WH_KEYBOARD_LL, proc, GetModuleHandle(curModule.ModuleName), 0);
-            }
         }
 
         private static IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam) {
@@ -140,17 +155,27 @@ namespace JarvisHotkey {
                 EnumWindows((hWnd, lParam) => {
                     if (!IsWindowVisible(hWnd)) return true;
 
-                    StringBuilder sb = new StringBuilder(256);
-                    GetWindowText(hWnd, sb, 256);
-                    string title = sb.ToString();
+                    StringBuilder sbTitle = new StringBuilder(256);
+                    GetWindowText(hWnd, sbTitle, 256);
+                    string title = sbTitle.ToString();
 
-                    if (!string.IsNullOrEmpty(title) && 
-                       (title.IndexOf("J.A.R.V.I.S", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        title.IndexOf("localhost:3000", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        title.IndexOf("React App", StringComparison.OrdinalIgnoreCase) >= 0)) {
+                    StringBuilder sbClass = new StringBuilder(256);
+                    GetClassName(hWnd, sbClass, 256);
+                    string className = sbClass.ToString();
+
+                    // Match J.A.R.V.I.S dedicated app window or browser window
+                    bool isJarvis = false;
+                    if (!string.IsNullOrEmpty(title)) {
+                        isJarvis = title.IndexOf("J.A.R.V.I.S", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                   title.IndexOf("localhost:3000", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                   title.IndexOf("React App", StringComparison.OrdinalIgnoreCase) >= 0;
+                    }
+
+                    if (isJarvis) {
                         ShowWindow(hWnd, SW_RESTORE);
                         SetForegroundWindow(hWnd);
                         BringWindowToTop(hWnd);
+                        SwitchToThisWindow(hWnd, true);
                         return false; // Stop enumeration once found
                     }
                     return true;

@@ -163,6 +163,32 @@ class GlobalHotkeyManager extends EventEmitter {
     });
   }
 
+  launchAppWindow(url = 'http://localhost:3000') {
+    const chromePaths = [
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      path.join(process.env.LOCALAPPDATA || '', 'Google\\Chrome\\Application\\chrome.exe'),
+      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+    ];
+
+    for (const exe of chromePaths) {
+      if (fs.existsSync(exe)) {
+        try {
+          spawn(exe, [`--app=${url}`, '--window-size=1280,820'], {
+            detached: true,
+            stdio: 'ignore',
+          }).unref();
+          console.log(`[GLOBAL-HOTKEY] Launched dedicated desktop window via ${exe}`);
+          return { success: true, exe };
+        } catch (e) {
+          console.warn('[GLOBAL-HOTKEY] Launch error:', e.message);
+        }
+      }
+    }
+    return { success: false, error: 'No Chromium browser found' };
+  }
+
   stop() {
     this.isShuttingDown = true;
     if (this.process) {
