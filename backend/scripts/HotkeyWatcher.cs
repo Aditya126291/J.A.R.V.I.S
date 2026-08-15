@@ -48,6 +48,7 @@ namespace FastJarvisHotkey {
         private const int VK_MENU = 0x12;     // Any Alt
         private const int VK_RCONTROL = 0xA3; // Right Ctrl
         private const int VK_APPS = 0x5D;     // Menu / Apps key
+        private const int VK_F9 = 0x78;       // F9 key
         private const int SW_RESTORE = 9;
 
         [StructLayout(LayoutKind.Sequential)]
@@ -80,8 +81,10 @@ namespace FastJarvisHotkey {
             Console.WriteLine("INITIALIZED");
             Console.Out.Flush();
 
-            // Thread 2 (Main): Message Loop for RegisterHotKey
+            // Thread 2 (Main): Message Loop for RegisterHotKey (Right Alt, F9, Right Ctrl)
             RegisterHotKey(IntPtr.Zero, 1, 0x4000 /* MOD_NOREPEAT */, (uint)VK_RMENU);
+            RegisterHotKey(IntPtr.Zero, 2, 0x4000 /* MOD_NOREPEAT */, (uint)VK_F9);
+            RegisterHotKey(IntPtr.Zero, 3, 0x4000 /* MOD_NOREPEAT */, (uint)VK_RCONTROL);
 
             MSG msg;
             while (GetMessage(out msg, IntPtr.Zero, 0, 0) > 0) {
@@ -100,14 +103,18 @@ namespace FastJarvisHotkey {
                     short rMenu = GetAsyncKeyState(VK_RMENU);
                     short lMenu = GetAsyncKeyState(VK_LMENU);
                     short menu = GetAsyncKeyState(VK_MENU);
+                    short rCtrl = GetAsyncKeyState(VK_RCONTROL);
+                    short f9 = GetAsyncKeyState(VK_F9);
                     short apps = GetAsyncKeyState(VK_APPS);
 
                     // Right Alt is pressed when VK_RMENU is down, OR when VK_MENU is down without VK_LMENU
                     bool rMenuDown = (rMenu & 0x8000) != 0;
                     bool altWithoutLeft = ((menu & 0x8000) != 0) && ((lMenu & 0x8000) == 0);
+                    bool rCtrlDown = (rCtrl & 0x8000) != 0;
+                    bool f9Down = (f9 & 0x8000) != 0;
                     bool appsDown = (apps & 0x8000) != 0;
 
-                    bool down = rMenuDown || altWithoutLeft;
+                    bool down = rMenuDown || altWithoutLeft || rCtrlDown || f9Down || appsDown;
 
                     if (down && !_isDown) {
                         _isDown = true;

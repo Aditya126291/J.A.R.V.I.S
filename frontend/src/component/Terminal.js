@@ -1122,9 +1122,15 @@ const Terminal = ({ blobConfig = {} }) => {
       toggleListening();
     };
 
-    const handleKeyDown = (e) => {
+    const isTriggerKey = (e) => {
       const isRightAlt = e.code === 'AltRight' || (e.key === 'Alt' && e.location === 2);
-      if (!isRightAlt) return;
+      const isF9 = e.code === 'F9' || e.key === 'F9';
+      const isRightCtrl = e.code === 'ControlRight' || (e.key === 'Control' && e.location === 2);
+      return isRightAlt || isF9 || isRightCtrl;
+    };
+
+    const handleKeyDown = (e) => {
+      if (!isTriggerKey(e)) return;
 
       e.preventDefault();
       if (e.repeat || rightAltHeldRef.current) return;
@@ -1135,8 +1141,7 @@ const Terminal = ({ blobConfig = {} }) => {
     };
 
     const handleKeyUp = (e) => {
-      const isRightAlt = e.code === 'AltRight' || (e.key === 'Alt' && e.location === 2);
-      if (!isRightAlt) return;
+      if (!isTriggerKey(e)) return;
 
       e.preventDefault();
       rightAltHeldRef.current = false;
@@ -1317,10 +1322,6 @@ const Terminal = ({ blobConfig = {} }) => {
     resetFadeTimer,
     stopAllAudio,
     updateLastJarvis,
-  ]);
-
-  const hideTerminal = fading;
-
   return (
     <>
       {pendingAction && (
@@ -1335,7 +1336,7 @@ const Terminal = ({ blobConfig = {} }) => {
       )}
 
       <div
-        className={`terminal-container ${hideTerminal ? 'fade-out' : 'fade-in'}`}
+        className="terminal-container fade-in"
         style={{
           borderColor: `${activeColor}4a`,
           boxShadow: `0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 15px ${activeColor}33`,
