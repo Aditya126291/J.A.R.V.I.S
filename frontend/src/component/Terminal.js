@@ -1035,6 +1035,34 @@ const Terminal = ({ blobConfig = {} }) => {
     }
   };
 
+  const playHudChime = useCallback((type = 'start') => {
+    try {
+      const ctx = ensureAudioCtx();
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      const now = ctx.currentTime;
+      if (type === 'start') {
+        osc.frequency.setValueAtTime(587.33, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc.start(now);
+        osc.stop(now + 0.12);
+      } else {
+        osc.frequency.setValueAtTime(880, now);
+        osc.frequency.exponentialRampToValueAtTime(440, now + 0.08);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc.start(now);
+        osc.stop(now + 0.12);
+      }
+    } catch (_) {}
+  }, [ensureAudioCtx]);
+
   const toggleListening = useCallback(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
@@ -1044,6 +1072,7 @@ const Terminal = ({ blobConfig = {} }) => {
       setIsListening(true);
       setLiveSpeech('');
       currentTranscriptRef.current = '';
+      playHudChime('start');
 
       if (isJarvisSpeakingRef.current) {
         stopAllAudio();
@@ -1066,6 +1095,7 @@ const Terminal = ({ blobConfig = {} }) => {
     } else {
       isListeningRef.current = false;
       setIsListening(false);
+      playHudChime('stop');
 
       if (recognitionRef.current) {
         try { recognitionRef.current.stop(); } catch (e) {}
@@ -1079,7 +1109,7 @@ const Terminal = ({ blobConfig = {} }) => {
         submitToJarvisRef.current(promptText);
       }
     }
-  }, [liveSpeech, stopAllAudio]);
+  }, [liveSpeech, playHudChime, stopAllAudio]);
 
   useEffect(() => {
     let lastHotkeyToggle = 0;
@@ -1236,6 +1266,12 @@ const Terminal = ({ blobConfig = {} }) => {
       setLiveSpeech(displayText);
       currentTranscriptRef.current = displayText;
       resetFadeTimer();
+    };
+
+    recognition.onerror = (e) => {
+      if (e.error !== 'no-speech' && e.error !== 'aborted') {
+        console.warn('[MIC ERROR]', e.error);
+      }
     };
 
     recognition.onend = () => {

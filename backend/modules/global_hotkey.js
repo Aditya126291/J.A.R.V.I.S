@@ -1,10 +1,12 @@
 // backend/modules/global_hotkey.js
 // Native Windows global hotkey watcher for J.A.R.V.I.S.
-// Captures AltRight (VK_RMENU) globally across the entire operating system
+// Uses a high-performance compiled Win32 C# binary (HotkeyWatcher.exe)
+// to capture AltRight (VK_RMENU) globally across the entire operating system
 // and broadcasts events to connected clients via Server-Sent Events (SSE).
 
-const { spawn } = require('child_process');
+const { spawn, execSync } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 const EventEmitter = require('events');
 
 class GlobalHotkeyManager extends EventEmitter {
@@ -13,7 +15,32 @@ class GlobalHotkeyManager extends EventEmitter {
     this.process = null;
     this.isShuttingDown = false;
     this.sseClients = new Set();
-    this.scriptPath = path.join(__dirname, '..', 'scripts', 'hotkey_listener.ps1');
+    this.exePath = path.join(__dirname, '..', 'bin', 'HotkeyWatcher.exe');
+    this.csSourcePath = path.join(__dirname, '..', 'scripts', 'HotkeyWatcher.cs');
+  }
+
+  ensureBinaryExists() {
+    if (fs.existsSync(this.exePath)) return true;
+
+    try {
+      const binDir = path.join(__dirname, '..', 'bin');
+      if (!fs.existsSync(binDir)) {
+        fs.mkdirSync(binDir, { recursive: true });
+      }
+
+      const cscPath = 'C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe';
+      if (fs.existsSync(cscPath) && fs.existsSync(this.csSourcePath)) {
+        console.log('[GLOBAL-HOTKEY] Compiling native HotkeyWatcher.exe...');
+        execSync(`"${cscPath}" /nologo /optimize /target:exe /out:"${this.exePath}" "${this.csSourcePath}"`, {
+          windowsHide: true,
+          timeout: 10000,
+        });
+        return fs.existsSync(this.exePath);
+      }
+    } catch (e) {
+      console.warn('[GLOBAL-HOTKEY] Could not compile HotkeyWatcher.exe:', e.message);
+    }
+    return false;
   }
 
   init() {
@@ -28,18 +55,29 @@ class GlobalHotkeyManager extends EventEmitter {
   startWatcher() {
     if (this.process) return;
 
+    const hasBinary = this.ensureBinaryExists();
+
     try {
-      this.process = spawn('powershell.exe', [
-        '-NoProfile',
-        '-NonInteractive',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-File',
-        this.scriptPath,
-      ], {
-        stdio: ['ignore', 'pipe', 'pipe'],
-        windowsHide: true,
-      });
+      if (hasBinary) {
+        this.process = spawn(this.exePath, [], {
+          stdio: ['ignore', 'pipe', 'pipe'],
+          windowsHide: true,
+        });
+      } else {
+        // Fallback to PowerShell script
+        const psScript = path.join(__dirname, '..', 'scripts', 'hotkey_listener.ps1');
+        this.process = spawn('powershell.exe', [
+          '-NoProfile',
+          '-NonInteractive',
+          '-ExecutionPolicy',
+          'Bypass',
+          '-File',
+          psScript,
+        ], {
+          stdio: ['ignore', 'pipe', 'pipe'],
+          windowsHide: true,
+        });
+      }
 
       let buffer = '';
 
@@ -51,7 +89,7 @@ class GlobalHotkeyManager extends EventEmitter {
         for (const line of lines) {
           const trimmed = line.trim();
           if (trimmed === 'INITIALIZED') {
-            console.log('[GLOBAL-HOTKEY] Windows OS-level hotkey listener active (Right Alt / AltRight).');
+            console.log('[GLOBAL-HOTKEY] Native Windows Win32 hotkey listener active (Right Alt / AltRight).');
           } else if (trimmed === 'KEYDOWN:AltRight') {
             this.broadcastHotkey({ key: 'AltRight', state: 'down' });
           } else if (trimmed === 'KEYUP:AltRight') {
@@ -86,6 +124,7 @@ class GlobalHotkeyManager extends EventEmitter {
   broadcastHotkey(payload) {
     const eventData = JSON.stringify({ type: 'hotkey', ...payload, timestamp: Date.now() });
     this.emit('hotkey', payload);
+    console.log(`[GLOBAL-HOTKEY] Key ${payload.key} (${payload.state}) -> sent to ${this.sseClients.size} frontend client(s)`);
 
     for (const client of this.sseClients) {
       try {
@@ -109,6 +148,7 @@ class GlobalHotkeyManager extends EventEmitter {
     // Send initial handshake
     res.write(`data: ${JSON.stringify({ type: 'connected', service: 'global_hotkey', hotkey: 'AltRight' })}\n\n`);
     this.sseClients.add(res);
+    console.log(`[GLOBAL-HOTKEY] Frontend connected to hotkey stream. Total active listeners: ${this.sseClients.size}`);
 
     const heartbeat = setInterval(() => {
       if (!res.writableEnded) {
@@ -119,6 +159,7 @@ class GlobalHotkeyManager extends EventEmitter {
     req.on('close', () => {
       clearInterval(heartbeat);
       this.sseClients.delete(res);
+      console.log(`[GLOBAL-HOTKEY] Frontend disconnected from hotkey stream. Remaining listeners: ${this.sseClients.size}`);
     });
   }
 
