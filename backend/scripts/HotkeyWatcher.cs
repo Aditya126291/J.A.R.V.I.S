@@ -1,65 +1,29 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 
-namespace JarvisHotkey {
+namespace FastJarvisHotkey {
     class Program {
-        private const int WH_KEYBOARD_LL = 13;
-        private const int WM_KEYDOWN = 0x0100;
-        private const int WM_KEYUP = 0x0101;
-        private const int WM_SYSKEYDOWN = 0x0104;
-        private const int WM_SYSKEYUP = 0x0105;
+        [DllImport("user32.dll")]
+        private static extern short GetAsyncKeyState(int vKey);
 
-        private const int VK_MENU = 0x12;     // Alt
-        private const int VK_LMENU = 0xA4;    // Left Alt
-        private const int VK_RMENU = 0xA5;    // Right Alt
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
 
-        private const int SW_RESTORE = 9;
-        private const int SW_SHOW = 5;
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct KBDLLHOOKSTRUCT {
-            public uint vkCode;
-            public uint scanCode;
-            public uint flags;
-            public uint time;
-            public IntPtr dwExtraInfo;
-        }
-
-        private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
-        private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr GetModuleHandle(string lpModuleName);
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
         [DllImport("user32.dll")]
         private static extern sbyte GetMessage(out MSG lpMsg, IntPtr hWnd, uint wMsgFilterMin, uint wMsgFilterMax);
-
-        [DllImport("user32.dll")]
-        private static extern bool TranslateMessage([In] ref MSG lpMsg);
-
-        [DllImport("user32.dll")]
-        private static extern IntPtr DispatchMessage([In] ref MSG lpmsg);
 
         [DllImport("user32.dll")]
         private static extern bool EnumWindows(EnumWindowsProc enumProc, IntPtr lParam);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
 
         [DllImport("user32.dll")]
         private static extern bool IsWindowVisible(IntPtr hWnd);
@@ -75,6 +39,16 @@ namespace JarvisHotkey {
 
         [DllImport("user32.dll")]
         private static extern bool SwitchToThisWindow(IntPtr hWnd, bool fAltTab);
+
+        private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+        private const int WM_HOTKEY = 0x0312;
+        private const int VK_RMENU = 0xA5;    // Right Alt
+        private const int VK_LMENU = 0xA4;    // Left Alt
+        private const int VK_MENU = 0x12;     // Any Alt
+        private const int VK_RCONTROL = 0xA3; // Right Ctrl
+        private const int VK_APPS = 0x5D;     // Menu / Apps key
+        private const int SW_RESTORE = 9;
 
         [StructLayout(LayoutKind.Sequential)]
         private struct MSG {
@@ -92,62 +66,82 @@ namespace JarvisHotkey {
             public int y;
         }
 
-        private static LowLevelKeyboardProc _proc = HookCallback;
-        private static IntPtr _hookID = IntPtr.Zero;
-        private static bool _rightAltDown = false;
+        private static string logPath = "fast_hotkey.log";
 
         static void Main(string[] args) {
-            // WH_KEYBOARD_LL requires IntPtr.Zero as hMod in .NET
-            _hookID = SetWindowsHookEx(WH_KEYBOARD_LL, _proc, IntPtr.Zero, 0);
+            File.WriteAllText(logPath, "FAST_HOTKEY_WATCHER_STARTED\n");
 
-            if (_hookID == IntPtr.Zero) {
-                // Fallback to module handle
-                using (Process curProcess = Process.GetCurrentProcess())
-                using (ProcessModule curModule = curProcess.MainModule) {
-                    _hookID = SetWindowsHookEx(WH_KEYBOARD_LL, _proc, GetModuleHandle(curModule.ModuleName), 0);
-                }
-            }
-
-            if (_hookID == IntPtr.Zero) {
-                Console.WriteLine("ERROR:HOOK_FAILED:" + Marshal.GetLastWin32Error());
-                Console.Out.Flush();
-                return;
-            }
+            // Thread 1: High-Speed Direct Kernel State Poller (GetAsyncKeyState)
+            Thread pollerThread = new Thread(PollerLoop);
+            pollerThread.IsBackground = true;
+            pollerThread.Priority = ThreadPriority.Highest;
+            pollerThread.Start();
 
             Console.WriteLine("INITIALIZED");
             Console.Out.Flush();
 
+            // Thread 2 (Main): Message Loop for RegisterHotKey
+            RegisterHotKey(IntPtr.Zero, 1, 0x4000 /* MOD_NOREPEAT */, (uint)VK_RMENU);
+
             MSG msg;
             while (GetMessage(out msg, IntPtr.Zero, 0, 0) > 0) {
-                TranslateMessage(ref msg);
-                DispatchMessage(ref msg);
-            }
-
-            UnhookWindowsHookEx(_hookID);
-        }
-
-        private static IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam) {
-            if (nCode >= 0) {
-                int msg = wParam.ToInt32();
-                KBDLLHOOKSTRUCT kbd = (KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(KBDLLHOOKSTRUCT));
-
-                bool isExtended = (kbd.flags & 1) != 0; // LLKHF_EXTENDED = 0x01
-                bool isRightAlt = (kbd.vkCode == VK_RMENU) || (kbd.vkCode == VK_MENU && isExtended);
-
-                if (isRightAlt) {
-                    if ((msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) && !_rightAltDown) {
-                        _rightAltDown = true;
-                        Console.WriteLine("KEYDOWN:AltRight");
-                        Console.Out.Flush();
-                        FocusJarvisWindow();
-                    } else if ((msg == WM_KEYUP || msg == WM_SYSKEYUP) && _rightAltDown) {
-                        _rightAltDown = false;
-                        Console.WriteLine("KEYUP:AltRight");
-                        Console.Out.Flush();
-                    }
+                if (msg.message == WM_HOTKEY) {
+                    OnHotkeyDown("RegisterHotKey");
                 }
             }
-            return CallNextHookEx(_hookID, nCode, wParam, lParam);
+        }
+
+        private static bool _isDown = false;
+        private static long _lastTriggerTime = 0;
+
+        private static void PollerLoop() {
+            while (true) {
+                try {
+                    short rMenu = GetAsyncKeyState(VK_RMENU);
+                    short lMenu = GetAsyncKeyState(VK_LMENU);
+                    short menu = GetAsyncKeyState(VK_MENU);
+                    short apps = GetAsyncKeyState(VK_APPS);
+
+                    // Right Alt is pressed when VK_RMENU is down, OR when VK_MENU is down without VK_LMENU
+                    bool rMenuDown = (rMenu & 0x8000) != 0;
+                    bool altWithoutLeft = ((menu & 0x8000) != 0) && ((lMenu & 0x8000) == 0);
+                    bool appsDown = (apps & 0x8000) != 0;
+
+                    bool down = rMenuDown || altWithoutLeft;
+
+                    if (down && !_isDown) {
+                        _isDown = true;
+                        OnHotkeyDown("GetAsyncKeyState");
+                    } else if (!down && _isDown) {
+                        _isDown = false;
+                        OnHotkeyUp("GetAsyncKeyState");
+                    }
+                } catch (Exception ex) {
+                    try { File.AppendAllText(logPath, "ERR: " + ex.Message + "\n"); } catch {}
+                }
+
+                Thread.Sleep(15);
+            }
+        }
+
+        private static void OnHotkeyDown(string source) {
+            long now = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+            if (now - _lastTriggerTime < 300) return; // Debounce
+            _lastTriggerTime = now;
+
+            string msg = "KEYDOWN:AltRight";
+            Console.WriteLine(msg);
+            Console.Out.Flush();
+            try { File.AppendAllText(logPath, "[" + DateTime.Now.ToString("HH:mm:ss.fff") + "] " + msg + " (" + source + ")\n"); } catch {}
+
+            FocusJarvisWindow();
+        }
+
+        private static void OnHotkeyUp(string source) {
+            string msg = "KEYUP:AltRight";
+            Console.WriteLine(msg);
+            Console.Out.Flush();
+            try { File.AppendAllText(logPath, "[" + DateTime.Now.ToString("HH:mm:ss.fff") + "] " + msg + " (" + source + ")\n"); } catch {}
         }
 
         public static void FocusJarvisWindow() {
@@ -159,24 +153,15 @@ namespace JarvisHotkey {
                     GetWindowText(hWnd, sbTitle, 256);
                     string title = sbTitle.ToString();
 
-                    StringBuilder sbClass = new StringBuilder(256);
-                    GetClassName(hWnd, sbClass, 256);
-                    string className = sbClass.ToString();
-
-                    // Match J.A.R.V.I.S dedicated app window or browser window
-                    bool isJarvis = false;
-                    if (!string.IsNullOrEmpty(title)) {
-                        isJarvis = title.IndexOf("J.A.R.V.I.S", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                   title.IndexOf("localhost:3000", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                   title.IndexOf("React App", StringComparison.OrdinalIgnoreCase) >= 0;
-                    }
-
-                    if (isJarvis) {
+                    if (!string.IsNullOrEmpty(title) &&
+                       (title.IndexOf("J.A.R.V.I.S", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        title.IndexOf("localhost:3000", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        title.IndexOf("React App", StringComparison.OrdinalIgnoreCase) >= 0)) {
                         ShowWindow(hWnd, SW_RESTORE);
                         SetForegroundWindow(hWnd);
                         BringWindowToTop(hWnd);
                         SwitchToThisWindow(hWnd, true);
-                        return false; // Stop enumeration once found
+                        return false;
                     }
                     return true;
                 }, IntPtr.Zero);
