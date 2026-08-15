@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './Terminal.css';
-import ConfirmDialog from './ConfirmDialog';
-import { chatWithJarvis, chatWithJarvisStream, executeJarvisAction, focusBrowser, ttsUrl } from '../api';
+import { chatWithJarvis, chatWithJarvisStream, executeJarvisAction, focusBrowser, ttsUrl, API_BASE_URL } from '../api';
 
 /**
  * Splits a speech string into chunks of at most `maxLen` characters.
@@ -1082,6 +1081,16 @@ const Terminal = ({ blobConfig = {} }) => {
   }, [liveSpeech, stopAllAudio]);
 
   useEffect(() => {
+    let lastHotkeyToggle = 0;
+
+    const triggerToggle = () => {
+      const now = Date.now();
+      // Debounce window key events and backend global hotkey events (prevent double toggle within 350ms)
+      if (now - lastHotkeyToggle < 350) return;
+      lastHotkeyToggle = now;
+      toggleListening();
+    };
+
     const handleKeyDown = (e) => {
       const isRightAlt = e.code === 'AltRight' || (e.key === 'Alt' && e.location === 2);
       if (!isRightAlt) return;
@@ -1091,7 +1100,7 @@ const Terminal = ({ blobConfig = {} }) => {
 
       // Key repeat must not turn one press into multiple start/stop cycles.
       rightAltHeldRef.current = true;
-      toggleListening();
+      triggerToggle();
     };
 
     const handleKeyUp = (e) => {
@@ -1104,9 +1113,48 @@ const Terminal = ({ blobConfig = {} }) => {
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+
+    // Global OS-Level Hotkey listener via SSE from backend (works when browser is minimized or unfocused)
+    let eventSource = null;
+    let reconnectTimeout = null;
+
+    const connectGlobalHotkey = () => {
+      try {
+        const streamUrl = `${API_BASE_URL || 'http://localhost:5000'}/api/hotkey-stream`;
+        eventSource = new EventSource(streamUrl);
+
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data && data.type === 'hotkey' && data.key === 'AltRight') {
+              if (data.state === 'down') {
+                triggerToggle();
+              }
+            }
+          } catch (_) {}
+        };
+
+        eventSource.onerror = () => {
+          if (eventSource) {
+            try { eventSource.close(); } catch (_) {}
+            eventSource = null;
+          }
+          reconnectTimeout = setTimeout(connectGlobalHotkey, 3000);
+        };
+      } catch (err) {
+        reconnectTimeout = setTimeout(connectGlobalHotkey, 3000);
+      }
+    };
+
+    connectGlobalHotkey();
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (eventSource) {
+        try { eventSource.close(); } catch (_) {}
+      }
     };
   }, [toggleListening]);
 

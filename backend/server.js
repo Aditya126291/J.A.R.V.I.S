@@ -20,12 +20,17 @@ const { handleWebCommand } = require('./modules/web');
 const security = require('./modules/security');
 const conversationStore = require('./modules/conversation_store');
 const memory = require('./modules/memory');
+const globalHotkey = require('./modules/global_hotkey');
 
 const app = express();
 const corsOptions = config.allowedOrigin === '*' ? {} : { origin: config.allowedOrigin };
 
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '1mb' }));
+
+app.get('/api/hotkey-stream', (req, res) => {
+  globalHotkey.registerSseClient(req, res);
+});
 
 tts.registerTtsRoute(app);
 
@@ -503,12 +508,14 @@ app.post('/api/artifacts', (req, res) => {
 
 app.listen(config.port, () => {
   console.log(`J.A.R.V.I.S backend online on port ${config.port}`);
-  console.log('Endpoints: /api/chat, /api/execute, /tts, /api/system-stats, /api/radar, /api/memory, /api/sessions, /api/audit-log, /api/security-matrix');
+  console.log('Endpoints: /api/chat, /api/execute, /tts, /api/system-stats, /api/radar, /api/memory, /api/sessions, /api/audit-log, /api/security-matrix, /api/hotkey-stream');
+  globalHotkey.init();
 });
 
 process.on('SIGTERM', () => {
   if (radarTimer) { clearInterval(radarTimer); radarTimer = null; }
   aiRouter.stopHealthMonitor();
+  globalHotkey.stop();
   process.exit(0);
 });
 
