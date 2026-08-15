@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './Terminal.css';
+import ConfirmDialog from './ConfirmDialog';
 import { chatWithJarvis, chatWithJarvisStream, executeJarvisAction, focusBrowser, ttsUrl, API_BASE_URL } from '../api';
 
 /**
@@ -1251,7 +1252,9 @@ const Terminal = ({ blobConfig = {} }) => {
     };
 
     return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       clearTimeout(window.blobSilenceTimer);
       stopAllAudio();
@@ -1268,14 +1271,19 @@ const Terminal = ({ blobConfig = {} }) => {
   }, [
     appendChat,
     blobConfig.language,
+    echoProtectUntilRef,
     executeCommand,
+    flushPendingSentence,
     handleCancel,
     handleConfirm,
+    ingestSpeechDelta,
+    isListening,
     resetFadeTimer,
     stopAllAudio,
+    updateLastJarvis,
   ]);
 
-  const hideTerminal = false;
+  const hideTerminal = fading;
 
   return (
     <>
