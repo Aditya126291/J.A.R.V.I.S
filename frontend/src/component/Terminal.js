@@ -1230,19 +1230,18 @@ const Terminal = ({ blobConfig = {} }) => {
             } else if (data.type === 'chat_result') {
               setLiveSpeech('');
               if (data.userTranscript) {
-                appendChat({ role: 'user', text: data.userTranscript });
+                appendChat({ role: 'USER', text: data.userTranscript });
               }
               if (data.speech) {
                 appendChat({ role: 'J.A.R.V.I.S', text: data.speech });
-                // Play spoken response via ElevenLabs
-                speak(data.speech, blobConfig.voice, blobConfig.language);
+                const chunks = (data.speech.match(/[^.!?]+[.!?]?/g) || [data.speech])
+                  .map((c) => c.trim()).filter(Boolean);
+                for (const c of chunks) {
+                  enqueueSpeechChunk(c);
+                }
               }
               if (Array.isArray(data.actions) && data.actions.length > 0) {
-                for (const act of data.actions) {
-                  if (act && act.module) {
-                    dispatchAction(act);
-                  }
-                }
+                executeCommand(data.actions, false, true);
               }
             } else if (data.type === 'hotkey' && data.key === 'AltRight') {
               if (data.state === 'down') {
