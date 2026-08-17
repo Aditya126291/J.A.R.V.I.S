@@ -1,7 +1,6 @@
 // backend/modules/global_hotkey.js
-// Native in-process Windows global hotkey watcher for J.A.R.V.I.S.
-// Uses uiohook-napi (native C++ low-level Windows keyboard hook)
-// which runs directly inside the Node.js process without any child-process desktop isolation.
+// Native in-process Windows global hotkey watcher & Push-to-Talk audio orchestrator for J.A.R.V.I.S.
+// Uses uiohook-napi for global keyboard hooks + hardware_audio for native 16kHz mic recording & speaker output.
 
 const { uIOhook, UiohookKey } = require('uiohook-napi');
 const { spawn, exec } = require('child_process');
@@ -9,11 +8,8 @@ const path = require('path');
 const fs = require('fs');
 const EventEmitter = require('events');
 
-// #region agent log
-function dbgHotkey(hypothesisId, location, message, data) {
-  fetch('http://127.0.0.1:7725/ingest/24b532b9-8624-4538-bfe3-0c7dd0936c97', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'bbe3e7' }, body: JSON.stringify({ sessionId: 'bbe3e7', runId: 'pre-fix', hypothesisId, location, message, data, timestamp: Date.now() }) }).catch(() => {});
-}
-// #endregion
+const hardwareAudio = require('./hardware_audio');
+const aiRouter = require('./ai_router');
 
 class GlobalHotkeyManager extends EventEmitter {
   constructor() {
@@ -33,7 +29,6 @@ class GlobalHotkeyManager extends EventEmitter {
 
     try {
       uIOhook.on('keydown', (e) => {
-        // Track Alt state (Left Alt or Right Alt)
         if (e.keycode === UiohookKey.Alt || e.keycode === UiohookKey.AltRight) {
           this.isAltDown = true;
         }
@@ -47,21 +42,13 @@ class GlobalHotkeyManager extends EventEmitter {
         const isF9 = e.keycode === UiohookKey.F9;
         const isRightCtrl = e.keycode === UiohookKey.CtrlRight;
         const isAltK = this.isAltDown && (e.keycode === UiohookKey.K || e.keycode === 37);
-        const isAltRelated = isRightAlt || e.keycode === UiohookKey.Alt || e.altKey || e.ctrlKey || e.keycode >= 3600;
-
-        if (isAltRelated || isF9 || isRightCtrl || isAltK) {
-          // #region agent log
-          dbgHotkey(isRightAlt ? 'H-HK2' : 'H-HK2', 'global_hotkey.js:keydown', 'native keydown candidate', { keycode: e.keycode, altKey: !!e.altKey, ctrlKey: !!e.ctrlKey, isRightAlt, isF9, isRightCtrl, isAltK, altRightConst: UiohookKey.AltRight, sseClients: this.sseClients.size });
-          // #endregion
-        }
 
         if (isRightAlt || isF9 || isRightCtrl || isAltK) {
           const now = Date.now();
-          if (now - this.lastTriggerTime < 300) return; // 300ms debounce
+          if (now - this.lastTriggerTime < 350) return; // 350ms debounce
           this.lastTriggerTime = now;
 
-          this.broadcastHotkey({ key: 'AltRight', state: 'down' });
-          this.focusJarvisWindow();
+          this.handleHotkeyPress();
         }
       });
 
@@ -69,28 +56,51 @@ class GlobalHotkeyManager extends EventEmitter {
         if (e.keycode === UiohookKey.Alt || e.keycode === UiohookKey.AltRight) {
           this.isAltDown = false;
         }
-
-        const isRightAlt = e.keycode === UiohookKey.AltRight;
-        const isF9 = e.keycode === UiohookKey.F9;
-        const isRightCtrl = e.keycode === UiohookKey.CtrlRight;
-        const isAltK = (e.keycode === UiohookKey.K || e.keycode === 37);
-
-        if (isRightAlt || isF9 || isRightCtrl || isAltK) {
-          this.broadcastHotkey({ key: 'AltRight', state: 'up' });
-        }
       });
 
       uIOhook.start();
       this.isHookRunning = true;
       console.log('[GLOBAL-HOTKEY] Native in-process uiohook-napi hook active (Right Alt, Alt+K, F9, Right Ctrl).');
-      // #region agent log
-      dbgHotkey('H-HK1', 'global_hotkey.js:startWatcher', 'native hook started', { alt: UiohookKey.Alt, altRight: UiohookKey.AltRight, ctrlRight: UiohookKey.CtrlRight, f9: UiohookKey.F9, hookRunning: true });
-      // #endregion
     } catch (err) {
       console.error('[GLOBAL-HOTKEY ERROR] Failed to start native hook:', err.message);
-      // #region agent log
-      dbgHotkey('H-HK1', 'global_hotkey.js:startWatcher', 'native hook FAILED', { error: String(err && err.message), hookRunning: false });
-      // #endregion
+    }
+  }
+
+  async handleHotkeyPress() {
+    this.focusJarvisWindow();
+
+    if (!hardwareAudio.isRecording) {
+      // 1. START RECORDING (Push-to-Talk Mode)
+      hardwareAudio.startRecording(); // Native python plays subtle rising chime
+      this.broadcastEvent({ type: 'audio_state', state: 'recording', hotkey: 'AltRight' });
+    } else {
+      // 2. STOP RECORDING & INGEST AUDIO DIRECTLY WITH GEMINI
+      this.broadcastEvent({ type: 'audio_state', state: 'processing', hotkey: 'AltRight' });
+      const recResult = await hardwareAudio.stopRecording(); // Native python plays subtle completion chime
+
+      if (recResult && recResult.audio_base64 && recResult.duration >= 0.2) {
+        console.log(`[GLOBAL-HOTKEY] Captured ${recResult.duration.toFixed(2)}s audio. Ingesting with Gemini...`);
+
+        try {
+          const aiResult = await aiRouter.chatAudio(recResult.audio_base64);
+
+          // Broadcast user transcript & assistant speech to UI in parallel
+          this.broadcastEvent({
+            type: 'chat_result',
+            userTranscript: aiResult.userTranscript,
+            speech: aiResult.speech,
+            actions: aiResult.actions,
+            provider: aiResult.provider,
+          });
+
+          this.broadcastEvent({ type: 'audio_state', state: 'idle' });
+        } catch (err) {
+          console.error('[GLOBAL-HOTKEY PROCESSING ERROR]', err.message);
+          this.broadcastEvent({ type: 'audio_state', state: 'idle', error: err.message });
+        }
+      } else {
+        this.broadcastEvent({ type: 'audio_state', state: 'idle' });
+      }
     }
   }
 
@@ -110,13 +120,9 @@ class GlobalHotkeyManager extends EventEmitter {
     } catch (_) {}
   }
 
-  broadcastHotkey(payload) {
-    const eventData = JSON.stringify({ type: 'hotkey', ...payload, timestamp: Date.now() });
-    this.emit('hotkey', payload);
-    console.log(`[GLOBAL-HOTKEY] Key ${payload.key} (${payload.state}) -> sent to ${this.sseClients.size} frontend client(s)`);
-    // #region agent log
-    dbgHotkey('H-HK4', 'global_hotkey.js:broadcastHotkey', 'broadcasting hotkey to SSE clients', { key: payload.key, state: payload.state, sseClients: this.sseClients.size });
-    // #endregion
+  broadcastEvent(payload) {
+    const eventData = JSON.stringify({ ...payload, timestamp: Date.now() });
+    this.emit('event', payload);
 
     for (const client of this.sseClients) {
       try {
@@ -130,6 +136,11 @@ class GlobalHotkeyManager extends EventEmitter {
     }
   }
 
+  // Alias for backward compatibility
+  broadcastHotkey(payload) {
+    this.broadcastEvent({ type: 'hotkey', ...payload });
+  }
+
   registerSseClient(req, res) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -141,9 +152,6 @@ class GlobalHotkeyManager extends EventEmitter {
     res.write(`data: ${JSON.stringify({ type: 'connected', service: 'global_hotkey', hotkey: 'AltRight' })}\n\n`);
     this.sseClients.add(res);
     console.log(`[GLOBAL-HOTKEY] Frontend connected to hotkey stream. Total active listeners: ${this.sseClients.size}`);
-    // #region agent log
-    dbgHotkey('H-HK3', 'global_hotkey.js:registerSseClient', 'SSE client connected', { sseClients: this.sseClients.size });
-    // #endregion
 
     const heartbeat = setInterval(() => {
       if (!res.writableEnded) {

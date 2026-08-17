@@ -79,6 +79,27 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+app.post('/api/chat-audio', async (req, res) => {
+  const { audioBase64 } = req.body || {};
+  const sessionId = requestSessionId(req);
+  if (!audioBase64 || typeof audioBase64 !== 'string') {
+    return res.status(400).json({ success: false, error: 'audioBase64 string is required' });
+  }
+
+  try {
+    const result = await aiRouter.chatAudio(audioBase64, sessionId);
+    res.json({ ...result, sessionId: conversationStore.getOrCreateActiveSession(sessionId).sessionId });
+  } catch (e) {
+    console.error('[CHAT AUDIO ERROR]', e);
+    res.status(500).json({
+      success: false,
+      speech: "I had trouble processing the audio, Aditya. Please try again.",
+      actions: [],
+      error: e.message,
+    });
+  }
+});
+
 function sseSend(res, type, payload) {
   if (res.writableEnded) return;
   res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`);

@@ -2389,9 +2389,111 @@ async function chatStream(userMessage, onEvent) {
   });
 }
 
+async function chatAudio(audioBase64, sessionId = null) {
+  if (!audioBase64) {
+    return { success: false, speech: 'I did not catch any audio.', actions: [], status: 'error' };
+  }
+
+  const activeProvider = selectProvider();
+  if (!activeProvider || !activeProvider.apiKey) {
+    return { success: false, speech: 'AI provider is currently unavailable.', actions: [], status: 'error' };
+  }
+
+  const promptText = "Listen to the user's voice in the attached audio. Return ONLY these XML tags:\n" +
+    "<user_transcript>Exact verbatim transcript of what user spoke in audio</user_transcript>\n" +
+    "<speak>Concise, warm, helpful spoken response to Aditya (1-2 sentences)</speak>\n" +
+    "<action>[{\"module\":\"...\",\"action\":\"...\",\"value\":\"...\"}]</action>";
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  const url = `${activeProvider.baseUrl}/models/${encodeURIComponent(activeProvider.model)}:generateContent`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': activeProvider.apiKey,
+      },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: SYSTEM_PROMPT }],
+        },
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                inlineData: {
+                  mimeType: 'audio/wav',
+                  data: audioBase64,
+                },
+              },
+              {
+                text: promptText,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 256,
+        },
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      throw new Error(`Gemini Audio HTTP ${response.status}: ${errText}`);
+    }
+
+    const data = await response.json();
+    const rawText = visibleGeminiText(data.candidates?.[0]?.content?.parts || []);
+
+    const transcriptMatch = rawText.match(/<user_transcript>([\s\S]*?)<\/user_transcript>/i);
+    const userTranscript = transcriptMatch ? transcriptMatch[1].trim() : 'Voice input received';
+
+    const parsed = parseResponse(rawText);
+    const speech = parsed.speech || 'Understood, Aditya.';
+    const actions = Array.isArray(parsed.actions) ? parsed.actions : [];
+
+    if (userTranscript) {
+      addToHistory('user', userTranscript);
+      addToHistory('assistant', speech);
+      try {
+        conversationStore.saveTurn(userTranscript, speech, activeProvider.name, sessionId);
+        memory.extractAndSaveMemories(userTranscript);
+      } catch (_) {}
+    }
+
+    return {
+      success: true,
+      userTranscript,
+      speech,
+      actions,
+      provider: activeProvider.name,
+      status: actions.length ? 'action' : 'chat',
+    };
+  } catch (err) {
+    clearTimeout(timeout);
+    console.error('[AI ROUTER AUDIO ERROR]', err.message);
+    return {
+      success: false,
+      userTranscript: 'Voice command',
+      speech: 'I had trouble processing the audio, Aditya. Please try again.',
+      actions: [],
+      error: err.message,
+    };
+  }
+}
+
 module.exports = {
   chat,
   chatStream,
+  chatAudio,
   getStatus,
   addToHistory,
   getHistory,

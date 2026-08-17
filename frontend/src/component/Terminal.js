@@ -1211,10 +1211,40 @@ const Terminal = ({ blobConfig = {} }) => {
         eventSource.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            if (data && data.type === 'hotkey' && data.key === 'AltRight') {
-              // #region agent log
-              fetch('http://127.0.0.1:7725/ingest/24b532b9-8624-4538-bfe3-0c7dd0936c97',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bbe3e7'},body:JSON.stringify({sessionId:'bbe3e7',runId:'pre-fix',hypothesisId:'H-HK4',location:'Terminal.js:EventSource.onmessage',message:'SSE hotkey received',data:{state:data.state,visibility:document.visibilityState,hidden:document.hidden},timestamp:Date.now()})}).catch(()=>{});
-              // #endregion
+            if (!data) return;
+
+            if (data.type === 'audio_state') {
+              if (data.state === 'recording') {
+                isListeningRef.current = true;
+                setIsListening(true);
+                setLiveSpeech('🎙️ Recording voice (Right Alt to Send)...');
+              } else if (data.state === 'processing') {
+                isListeningRef.current = false;
+                setIsListening(false);
+                setLiveSpeech('⚡ Processing audio with Gemini...');
+              } else if (data.state === 'idle') {
+                isListeningRef.current = false;
+                setIsListening(false);
+                setLiveSpeech('');
+              }
+            } else if (data.type === 'chat_result') {
+              setLiveSpeech('');
+              if (data.userTranscript) {
+                appendChat({ role: 'user', text: data.userTranscript });
+              }
+              if (data.speech) {
+                appendChat({ role: 'J.A.R.V.I.S', text: data.speech });
+                // Play spoken response via ElevenLabs
+                speak(data.speech, blobConfig.voice, blobConfig.language);
+              }
+              if (Array.isArray(data.actions) && data.actions.length > 0) {
+                for (const act of data.actions) {
+                  if (act && act.module) {
+                    dispatchAction(act);
+                  }
+                }
+              }
+            } else if (data.type === 'hotkey' && data.key === 'AltRight') {
               if (data.state === 'down') {
                 triggerToggle('sse-hotkey');
               }
