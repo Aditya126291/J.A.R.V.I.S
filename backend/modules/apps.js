@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { execFile } = require('child_process');
+const { execFile, exec } = require('child_process');
 const { runPowerShell } = require('./utils');
 const {
   APP_MAP,
@@ -158,23 +158,21 @@ function Write-JarvisResult($kind, $target, $name) {
     exit 0
 }
 
-$registeredApp = Get-StartApps | Where-Object { (Normalize-JarvisName $_.Name) -eq $needle } | Select-Object -First 1
-if ($registeredApp -and $registeredApp.AppID) {
-    Write-JarvisResult 'appId' $registeredApp.AppID $registeredApp.Name
-}
-
+# 1. Search filesystem shortcuts and program executables first (Desktop, Start Menu, LocalAppData Programs)
 $roots = @(
     [Environment]::GetFolderPath('Desktop'),
     (Join-Path $env:USERPROFILE 'OneDrive\\Desktop'),
-    [Environment]::GetFolderPath('MyDocuments'),
-    (Join-Path $env:USERPROFILE 'Downloads'),
     (Join-Path $env:APPDATA 'Microsoft\\Windows\\Start Menu\\Programs'),
-    (Join-Path $env:ProgramData 'Microsoft\\Windows\\Start Menu\\Programs')
+    (Join-Path $env:ProgramData 'Microsoft\\Windows\\Start Menu\\Programs'),
+    (Join-Path $env:LOCALAPPDATA 'Programs'),
+    (Join-Path $env:ProgramFiles ''),
+    (Join-Path \${env:ProgramFiles(x86)} ''),
+    [Environment]::GetFolderPath('MyDocuments'),
+    (Join-Path $env:USERPROFILE 'Downloads')
 ) | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -Unique
 
 foreach ($root in $roots) {
-    # Check direct children before a recursive walk. A command such as
-    # "open J.A.R.V.I.S" should not traverse an entire Desktop first.
+    # Check direct children first
     $directMatches = @(Get-ChildItem -LiteralPath $root -Force -ErrorAction SilentlyContinue |
         Where-Object { (Normalize-JarvisName $_.Name) -eq $needle } |
         Select-Object -First 2)
@@ -188,8 +186,8 @@ foreach ($root in $roots) {
         exit 0
     }
 
-    # Search locations in priority order with depth cap of 2 for fast resolution.
-    $matches = @(Get-ChildItem -LiteralPath $root -Force -Recurse -Depth 2 -ErrorAction SilentlyContinue |
+    # Recursive check with depth cap 3
+    $matches = @(Get-ChildItem -LiteralPath $root -Force -Recurse -Depth 3 -ErrorAction SilentlyContinue |
         Where-Object { (Normalize-JarvisName $_.Name) -eq $needle } |
         Select-Object -First 2)
     if ($matches.Count -eq 1) {
@@ -202,6 +200,12 @@ foreach ($root in $roots) {
         exit 0
     }
 }
+
+# 2. Check UWP / Store Apps from Get-StartApps
+$registeredApp = Get-StartApps | Where-Object { (Normalize-JarvisName $_.Name) -eq $needle } | Select-Object -First 1
+if ($registeredApp -and $registeredApp.AppID) {
+    Write-JarvisResult 'appId' $registeredApp.AppID $registeredApp.Name
+}
 `;
   const { error, stdout } = await runPowerShell(script);
   if (error || !stdout.trim()) return null;
@@ -212,46 +216,42 @@ foreach ($root in $roots) {
   }
 }
 
-async function openWithShell(target, label) {
-  const script = `
+function openWithShell(target, label) {
+  return new Promise((resolve) => {
+    // Windows native ShellExecute via cmd start
+    exec(`start "" "${String(target).replace(/"/g, '""')}"`, { windowsHide: true }, (error) => {
+      if (error) {
+        const script = `
 $ErrorActionPreference = 'Stop'
 try {
-    Start-Process -FilePath 'explorer.exe' -ArgumentList ${psQuote(target)} -ErrorAction Stop | Out-Null
+    Invoke-Item -LiteralPath ${psQuote(target)} -ErrorAction Stop
     Write-Output 'LAUNCH_REQUESTED'
 } catch {
-    Write-Error $_.Exception.Message
-    exit 1
+    Start-Process -FilePath 'explorer.exe' -ArgumentList ${psQuote(target)} -ErrorAction Stop | Out-Null
+    Write-Output 'LAUNCH_REQUESTED'
 }
 `;
-  const { error, stderr, stdout } = await runPowerShell(script);
-  if (error || !stdout.includes('LAUNCH_REQUESTED')) {
-    return { success: false, error: stderr || error?.message || 'Windows could not open that item.' };
-  }
-  return { success: true, message: `Opening ${label}.` };
+        runPowerShell(script).then(({ error: psErr, stderr, stdout }) => {
+          if (psErr || !stdout.includes('LAUNCH_REQUESTED')) {
+            resolve({ success: false, error: stderr || psErr?.message || `Windows could not open ${label || target}.` });
+          } else {
+            resolve({ success: true, message: `Opening ${label || target}.` });
+          }
+        });
+        return;
+      }
+      resolve({ success: true, message: `Opening ${label || target}.` });
+    });
+  });
 }
 
 async function openResolvedTarget(resolved) {
   if (resolved.kind === 'appId') {
-    const result = await openWithShell(`shell:AppsFolder\\${resolved.target}`, resolved.name);
-    return result.success ? { ...result, message: `Opening ${resolved.name}.` } : result;
+    return openWithShell(`shell:AppsFolder\\${resolved.target}`, resolved.name);
   }
 
   if (resolved.kind === 'path') {
-    const script = `
-$ErrorActionPreference = 'Stop'
-try {
-    Invoke-Item -LiteralPath ${psQuote(resolved.target)} -ErrorAction Stop
-    Write-Output 'LAUNCH_REQUESTED'
-} catch {
-    Write-Error $_.Exception.Message
-    exit 1
-}
-`;
-    const { error, stderr, stdout } = await runPowerShell(script);
-    if (error || !stdout.includes('LAUNCH_REQUESTED')) {
-      return { success: false, error: stderr || error?.message || `Windows could not open ${resolved.name}.` };
-    }
-    return { success: true, message: `Opening ${resolved.name}.` };
+    return openWithShell(resolved.target, resolved.name);
   }
 
   return { success: false, error: 'I could not resolve that item.' };

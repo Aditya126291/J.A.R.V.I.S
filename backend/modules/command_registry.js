@@ -55,9 +55,15 @@ const APP_MAP = {
   telegram: 'telegram',
   vlc: 'vlc',
   obs: 'obs64',
+  cursor: 'cursor',
+  ibm: 'https://ibm.com',
+  notion: 'https://notion.so',
+  figma: 'https://figma.com',
+  canva: 'https://canva.com',
 };
 
 const CLOSE_MAP = {
+  cursor: ['Cursor.exe'],
   chrome: ['chrome.exe'],
   'google chrome': ['chrome.exe'],
   firefox: ['firefox.exe'],

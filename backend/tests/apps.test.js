@@ -30,9 +30,15 @@ describe('app command safety and launch targeting', () => {
   test('resolves unmapped website keywords and modern TLDs to direct URLs', () => {
     expect(resolveOpenTarget('kiro website')).toContain('duckduckgo.com/?q=!+kiro');
     expect(resolveOpenTarget('linear site')).toContain('duckduckgo.com/?q=!+linear');
+    expect(resolveOpenTarget('ibm')).toBe('https://ibm.com');
     expect(resolveOpenTarget('figma.com')).toBe('https://figma.com');
     expect(resolveOpenTarget('https://kiro.dev')).toBe('https://kiro.dev');
     expect(resolveOpenTarget('claude.ai')).toBe('https://claude.ai');
     expect(resolveOpenTarget('canva.xyz')).toBe('https://canva.xyz');
+  });
+
+  test('Cursor editor has valid open and close targets', () => {
+    expect(resolveOpenTarget('cursor')).toBe('cursor');
+    expect(processNamesForTarget('cursor')).toEqual(['Cursor']);
   });
 });
