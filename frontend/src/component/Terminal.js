@@ -1112,12 +1112,19 @@ const Terminal = ({ blobConfig = {} }) => {
         }
       }
 
+      // Start recognition — if already running, let onend auto-restart it
       try {
         if (recognitionRef.current) {
-          try { recognitionRef.current.stop(); } catch (e) {}
-        }
-        if (recognitionRef.current) {
-          try { recognitionRef.current.start(); } catch (e) {}
+          // Only start if not already running to avoid InvalidStateError
+          try { recognitionRef.current.start(); } catch (e) {
+            // If already started, stop first then restart after a tick
+            try { recognitionRef.current.stop(); } catch (e2) {}
+            setTimeout(() => {
+              if (recognitionRef.current && isListeningRef.current) {
+                try { recognitionRef.current.start(); } catch (e3) {}
+              }
+            }, 100);
+          }
         }
       } catch (err) {
         console.error('[MIC] Start error:', err);

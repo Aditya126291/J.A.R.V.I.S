@@ -1,10 +1,10 @@
 // backend/modules/global_hotkey.js
-// Native Windows global hotkey watcher for J.A.R.V.I.S.
-// Uses a high-performance compiled Win32 C# binary (HotkeyWatcher.exe)
-// to capture AltRight (VK_RMENU) globally across the entire operating system
+// Global hotkey watcher for J.A.R.V.I.S.
+// Uses a Python script (hotkey_watcher.py) with direct ctypes Win32 API calls
+// to capture Right Alt / F9 / Right Ctrl globally across the entire OS,
 // and broadcasts events to connected clients via Server-Sent Events (SSE).
 
-const { spawn, execSync } = require('child_process');
+const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const EventEmitter = require('events');
@@ -15,32 +15,7 @@ class GlobalHotkeyManager extends EventEmitter {
     this.process = null;
     this.isShuttingDown = false;
     this.sseClients = new Set();
-    this.exePath = path.join(__dirname, '..', 'bin', 'HotkeyWatcher.exe');
-    this.csSourcePath = path.join(__dirname, '..', 'scripts', 'HotkeyWatcher.cs');
-  }
-
-  ensureBinaryExists() {
-    if (fs.existsSync(this.exePath)) return true;
-
-    try {
-      const binDir = path.join(__dirname, '..', 'bin');
-      if (!fs.existsSync(binDir)) {
-        fs.mkdirSync(binDir, { recursive: true });
-      }
-
-      const cscPath = 'C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe';
-      if (fs.existsSync(cscPath) && fs.existsSync(this.csSourcePath)) {
-        console.log('[GLOBAL-HOTKEY] Compiling native HotkeyWatcher.exe...');
-        execSync(`"${cscPath}" /nologo /optimize /target:exe /out:"${this.exePath}" "${this.csSourcePath}"`, {
-          windowsHide: true,
-          timeout: 10000,
-        });
-        return fs.existsSync(this.exePath);
-      }
-    } catch (e) {
-      console.warn('[GLOBAL-HOTKEY] Could not compile HotkeyWatcher.exe:', e.message);
-    }
-    return false;
+    this.pyScriptPath = path.join(__dirname, '..', 'scripts', 'hotkey_watcher.py');
   }
 
   init() {
@@ -55,41 +30,29 @@ class GlobalHotkeyManager extends EventEmitter {
   startWatcher() {
     if (this.process) return;
 
-    const hasBinary = this.ensureBinaryExists();
+    if (!fs.existsSync(this.pyScriptPath)) {
+      console.error('[GLOBAL-HOTKEY] hotkey_watcher.py not found at:', this.pyScriptPath);
+      return;
+    }
 
     try {
-      if (hasBinary) {
-        this.process = spawn(this.exePath, [], {
-          stdio: ['ignore', 'pipe', 'pipe'],
-          windowsHide: true,
-        });
-      } else {
-        // Fallback to PowerShell script
-        const psScript = path.join(__dirname, '..', 'scripts', 'hotkey_listener.ps1');
-        this.process = spawn('powershell.exe', [
-          '-NoProfile',
-          '-NonInteractive',
-          '-ExecutionPolicy',
-          'Bypass',
-          '-File',
-          psScript,
-        ], {
-          stdio: ['ignore', 'pipe', 'pipe'],
-          windowsHide: true,
-        });
-      }
+      // Spawn Python with unbuffered output (-u) for real-time stdout
+      this.process = spawn('python', ['-u', this.pyScriptPath], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        windowsHide: true,
+      });
 
       let buffer = '';
 
       this.process.stdout.on('data', (chunk) => {
         buffer += chunk.toString();
         const lines = buffer.split(/\r?\n/);
-        buffer = lines.pop(); // keep remainder
+        buffer = lines.pop(); // keep incomplete line remainder
 
         for (const line of lines) {
           const trimmed = line.trim();
           if (trimmed === 'INITIALIZED') {
-            console.log('[GLOBAL-HOTKEY] Native Windows Win32 hotkey listener active (Right Alt / AltRight).');
+            console.log('[GLOBAL-HOTKEY] Python Win32 hotkey listener active (Right Alt / F9 / Right Ctrl).');
           } else if (trimmed === 'KEYDOWN:AltRight') {
             this.broadcastHotkey({ key: 'AltRight', state: 'down' });
           } else if (trimmed === 'KEYUP:AltRight') {
