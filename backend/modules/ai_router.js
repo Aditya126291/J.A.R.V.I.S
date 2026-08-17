@@ -160,7 +160,7 @@ function extractNumber(text) {
 
 function cleanTarget(value) {
   return String(value || '')
-    .replace(/\b(jarvis|please|pls|karo|kar|krdo|kar do|the|a|my|app|application)\b/gi, '')
+    .replace(/\b(jarvis|please|pls|karo|kar|krdo|kar do|the|a|my|app|application|tab|window|process|program)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
