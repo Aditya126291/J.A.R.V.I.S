@@ -1163,7 +1163,8 @@ const Terminal = ({ blobConfig = {} }) => {
       const isRightAlt = e.code === 'AltRight' || (e.key === 'Alt' && e.location === 2);
       const isF9 = e.code === 'F9' || e.key === 'F9';
       const isRightCtrl = e.code === 'ControlRight' || (e.key === 'Control' && e.location === 2);
-      return isRightAlt || isF9 || isRightCtrl;
+      const isAltK = (e.altKey || isRightAlt) && (e.code === 'KeyK' || e.key === 'k' || e.key === 'K');
+      return isRightAlt || isF9 || isRightCtrl || isAltK;
     };
 
     const handleKeyDown = (e) => {

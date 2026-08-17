@@ -1,10 +1,10 @@
 // backend/modules/global_hotkey.js
-// Global hotkey watcher for J.A.R.V.I.S.
-// Uses a Python script (hotkey_watcher.py) with direct ctypes Win32 API calls
-// to capture Right Alt / F9 / Right Ctrl globally across the entire OS,
-// and broadcasts events to connected clients via Server-Sent Events (SSE).
+// Native in-process Windows global hotkey watcher for J.A.R.V.I.S.
+// Uses uiohook-napi (native C++ low-level Windows keyboard hook)
+// which runs directly inside the Node.js process without any child-process desktop isolation.
 
-const { spawn } = require('child_process');
+const { uIOhook, UiohookKey } = require('uiohook-napi');
+const { spawn, exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const EventEmitter = require('events');
@@ -12,76 +12,83 @@ const EventEmitter = require('events');
 class GlobalHotkeyManager extends EventEmitter {
   constructor() {
     super();
-    this.process = null;
-    this.isShuttingDown = false;
+    this.isHookRunning = false;
     this.sseClients = new Set();
-    this.pyScriptPath = path.join(__dirname, '..', 'scripts', 'hotkey_watcher.py');
+    this.lastTriggerTime = 0;
+    this.isAltDown = false;
   }
 
   init() {
-    if (process.platform !== 'win32') {
-      console.log('[GLOBAL-HOTKEY] Global hotkey listener is only supported on Windows.');
-      return;
-    }
-    this.isShuttingDown = false;
     this.startWatcher();
   }
 
   startWatcher() {
-    if (this.process) return;
-
-    if (!fs.existsSync(this.pyScriptPath)) {
-      console.error('[GLOBAL-HOTKEY] hotkey_watcher.py not found at:', this.pyScriptPath);
-      return;
-    }
+    if (this.isHookRunning) return;
 
     try {
-      // Spawn Python with unbuffered output (-u) for real-time stdout
-      this.process = spawn('python', ['-u', this.pyScriptPath], {
-        stdio: ['ignore', 'pipe', 'pipe'],
-        windowsHide: true,
-      });
+      uIOhook.on('keydown', (e) => {
+        // Track Alt state (Left Alt or Right Alt)
+        if (e.keycode === UiohookKey.Alt || e.keycode === UiohookKey.AltRight) {
+          this.isAltDown = true;
+        }
 
-      let buffer = '';
+        // Trigger conditions:
+        // 1. Right Alt (AltRight / AltGr) - keycode 3640
+        // 2. F9 - keycode 67
+        // 3. Right Ctrl - keycode 3613
+        // 4. Alt + K (or Right Alt + K) - keycode 37 with Alt down
+        const isRightAlt = e.keycode === UiohookKey.AltRight;
+        const isF9 = e.keycode === UiohookKey.F9;
+        const isRightCtrl = e.keycode === UiohookKey.CtrlRight;
+        const isAltK = this.isAltDown && (e.keycode === UiohookKey.K || e.keycode === 37);
 
-      this.process.stdout.on('data', (chunk) => {
-        buffer += chunk.toString();
-        const lines = buffer.split(/\r?\n/);
-        buffer = lines.pop(); // keep incomplete line remainder
+        if (isRightAlt || isF9 || isRightCtrl || isAltK) {
+          const now = Date.now();
+          if (now - this.lastTriggerTime < 300) return; // 300ms debounce
+          this.lastTriggerTime = now;
 
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (trimmed === 'INITIALIZED') {
-            console.log('[GLOBAL-HOTKEY] Python Win32 hotkey listener active (Right Alt / F9 / Right Ctrl).');
-          } else if (trimmed === 'KEYDOWN:AltRight') {
-            this.broadcastHotkey({ key: 'AltRight', state: 'down' });
-          } else if (trimmed === 'KEYUP:AltRight') {
-            this.broadcastHotkey({ key: 'AltRight', state: 'up' });
-          }
+          this.broadcastHotkey({ key: 'AltRight', state: 'down' });
+          this.focusJarvisWindow();
         }
       });
 
-      this.process.stderr.on('data', (err) => {
-        const msg = err.toString().trim();
-        if (msg) {
-          console.warn('[GLOBAL-HOTKEY WARN]', msg);
+      uIOhook.on('keyup', (e) => {
+        if (e.keycode === UiohookKey.Alt || e.keycode === UiohookKey.AltRight) {
+          this.isAltDown = false;
+        }
+
+        const isRightAlt = e.keycode === UiohookKey.AltRight;
+        const isF9 = e.keycode === UiohookKey.F9;
+        const isRightCtrl = e.keycode === UiohookKey.CtrlRight;
+        const isAltK = (e.keycode === UiohookKey.K || e.keycode === 37);
+
+        if (isRightAlt || isF9 || isRightCtrl || isAltK) {
+          this.broadcastHotkey({ key: 'AltRight', state: 'up' });
         }
       });
 
-      this.process.on('exit', (code) => {
-        this.process = null;
-        if (!this.isShuttingDown) {
-          console.log(`[GLOBAL-HOTKEY] Watcher exited with code ${code}. Restarting in 2s...`);
-          setTimeout(() => this.startWatcher(), 2000);
-        }
-      });
-
-      this.process.on('error', (err) => {
-        console.error('[GLOBAL-HOTKEY ERROR]', err.message);
-      });
-    } catch (e) {
-      console.error('[GLOBAL-HOTKEY LAUNCH ERROR]', e.message);
+      uIOhook.start();
+      this.isHookRunning = true;
+      console.log('[GLOBAL-HOTKEY] Native in-process uiohook-napi hook active (Right Alt, Alt+K, F9, Right Ctrl).');
+    } catch (err) {
+      console.error('[GLOBAL-HOTKEY ERROR] Failed to start native hook:', err.message);
     }
+  }
+
+  focusJarvisWindow() {
+    if (process.platform !== 'win32') return;
+    try {
+      const psScript = `
+        $wshell = New-Object -ComObject WScript.Shell;
+        $procs = Get-Process | Where-Object { $_.MainWindowTitle -match 'J.A.R.V.I.S|localhost:3000|React App|Control Center' };
+        if ($procs) {
+          $wshell.AppActivate($procs[0].Id);
+        } else {
+          $wshell.AppActivate('J.A.R.V.I.S');
+        }
+      `.replace(/\r?\n/g, ' ');
+      exec(`powershell -NoProfile -NonInteractive -Command "${psScript}"`, () => {});
+    } catch (_) {}
   }
 
   broadcastHotkey(payload) {
@@ -154,11 +161,11 @@ class GlobalHotkeyManager extends EventEmitter {
 
   stop() {
     this.isShuttingDown = true;
-    if (this.process) {
+    if (this.isHookRunning) {
       try {
-        this.process.kill();
+        uIOhook.stop();
       } catch (_) {}
-      this.process = null;
+      this.isHookRunning = false;
     }
     for (const client of this.sseClients) {
       try {
