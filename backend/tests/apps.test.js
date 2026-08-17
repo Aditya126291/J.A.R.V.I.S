@@ -26,4 +26,13 @@ describe('app command safety and launch targeting', () => {
     expect(normalizeLookupName(' J.A.R.V.I.S.lnk ')).toBe('j.a.r.v.i.s');
     expect(normalizeLookupName('My   Project.exe')).toBe('my project');
   });
+
+  test('resolves unmapped website keywords and modern TLDs to direct URLs', () => {
+    expect(resolveOpenTarget('kiro website')).toContain('duckduckgo.com/?q=!+kiro');
+    expect(resolveOpenTarget('linear site')).toContain('duckduckgo.com/?q=!+linear');
+    expect(resolveOpenTarget('figma.com')).toBe('https://figma.com');
+    expect(resolveOpenTarget('https://kiro.dev')).toBe('https://kiro.dev');
+    expect(resolveOpenTarget('claude.ai')).toBe('https://claude.ai');
+    expect(resolveOpenTarget('canva.xyz')).toBe('https://canva.xyz');
+  });
 });

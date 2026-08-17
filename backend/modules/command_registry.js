@@ -264,7 +264,7 @@ function isSafeUrlLike(value) {
       return false;
     }
   }
-  return /^[a-z0-9.-]+\.(com|org|in|net|io|ai|dev|app)(\/.*)?$/i.test(trimmed);
+  return /^[a-z0-9.-]+\.[a-z]{2,10}(\/.*)?$/i.test(trimmed);
 }
 
 function normalizeUrl(value) {

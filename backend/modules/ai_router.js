@@ -23,7 +23,7 @@ const SYSTEM_PROMPT = [
   "Never include hidden reasoning, chain-of-thought, analysis, scratchpad, markdown, or any text outside those two tags.",
   "",
   "Allowed actions:",
-  "- {\"module\":\"apps\",\"action\":\"open|close\",\"value\":\"app_or_site\"}",
+  "- {\"module\":\"apps\",\"action\":\"open|close\",\"value\":\"app_or_site_or_url\"}  (e.g. \"whatsapp\", \"kiro website\", \"https://kiro.dev\", \"figma.com\")",
   "- {\"module\":\"apps\",\"action\":\"automate\",\"value\":{\"app\":\"app_name\",\"sequence\":[\"{WAIT:1000}\",\"text\",\"{ENTER}\"]}}",
   "- {\"module\":\"message\",\"action\":\"send\",\"value\":{\"app\":\"whatsapp|telegram\",\"contact\":\"name_or_phone\",\"message\":\"text\"}}",
   "- {\"module\":\"system\",\"action\":\"volume_set|volume_mute|volume_unmute|brightness_set|brightness_adjust|bluetooth_enable|bluetooth_disable\",\"value\":number_or_null}",

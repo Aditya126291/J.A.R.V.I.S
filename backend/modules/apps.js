@@ -117,6 +117,17 @@ function resolveOpenTarget(rawTarget) {
   if (fs.existsSync(String(rawTarget).trim())) {
     return rawTarget;
   }
+
+  // If user explicitly asks for a website / site, resolve to direct web navigation
+  if (/\b(?:website|site|webpage|portal)\b/i.test(lower)) {
+    const clean = lower.replace(/\b(the|a|my|website|site|webpage|portal)\b/gi, '').replace(/\s+/g, ' ').trim();
+    if (clean) {
+      if (APP_MAP[clean]) return APP_MAP[clean];
+      if (isSafeUrlLike(clean)) return normalizeUrl(clean);
+      return `https://duckduckgo.com/?q=!+${encodeURIComponent(clean + ' website')}`;
+    }
+  }
+
   return null;
 }
 
@@ -177,8 +188,8 @@ foreach ($root in $roots) {
         exit 0
     }
 
-    # Search locations in priority order and stop after two exact matches.
-    $matches = @(Get-ChildItem -LiteralPath $root -Force -Recurse -ErrorAction SilentlyContinue |
+    # Search locations in priority order with depth cap of 2 for fast resolution.
+    $matches = @(Get-ChildItem -LiteralPath $root -Force -Recurse -Depth 2 -ErrorAction SilentlyContinue |
         Where-Object { (Normalize-JarvisName $_.Name) -eq $needle } |
         Select-Object -First 2)
     if ($matches.Count -eq 1) {
@@ -378,7 +389,12 @@ async function handleAppCommand(action, target) {
     const openTarget = resolveOpenTarget(target);
     if (!openTarget) {
       const resolved = await findLaunchableTarget(target);
-      if (!resolved) return { success: false, error: `I could not find “${target}” in your installed apps, Desktop, OneDrive, Documents, Downloads, or Start Menu.` };
+      if (!resolved) {
+        // Universal web fallback: open top official website/result for unmapped target
+        const cleanName = lower.replace(/\b(the|a|my|app|application|program|website|site)\b/gi, '').replace(/\s+/g, ' ').trim() || target;
+        const webUrl = `https://duckduckgo.com/?q=!+${encodeURIComponent(cleanName)}`;
+        return openWithShell(webUrl, target);
+      }
       if (resolved.kind === 'ambiguous') {
         return { success: false, error: `I found multiple items named “${target}”. Please say the location as well, for example “open ${target} in Downloads”.` };
       }
