@@ -1151,11 +1151,19 @@ const Terminal = ({ blobConfig = {} }) => {
   useEffect(() => {
     let lastHotkeyToggle = 0;
 
-    const triggerToggle = () => {
+    const triggerToggle = (source) => {
       const now = Date.now();
       // Debounce window key events and backend global hotkey events (prevent double toggle within 350ms)
-      if (now - lastHotkeyToggle < 350) return;
+      if (now - lastHotkeyToggle < 350) {
+        // #region agent log
+        fetch('http://127.0.0.1:7725/ingest/24b532b9-8624-4538-bfe3-0c7dd0936c97',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bbe3e7'},body:JSON.stringify({sessionId:'bbe3e7',runId:'pre-fix',hypothesisId:'H-HK4',location:'Terminal.js:triggerToggle',message:'toggle debounced',data:{source,visibility:document.visibilityState,hidden:document.hidden},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+        return;
+      }
       lastHotkeyToggle = now;
+      // #region agent log
+      fetch('http://127.0.0.1:7725/ingest/24b532b9-8624-4538-bfe3-0c7dd0936c97',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bbe3e7'},body:JSON.stringify({sessionId:'bbe3e7',runId:'pre-fix',hypothesisId:'H-HK5',location:'Terminal.js:triggerToggle',message:'toggle listening',data:{source,visibility:document.visibilityState,hidden:document.hidden},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       toggleListening();
     };
 
@@ -1175,7 +1183,10 @@ const Terminal = ({ blobConfig = {} }) => {
 
       // Key repeat must not turn one press into multiple start/stop cycles.
       rightAltHeldRef.current = true;
-      triggerToggle();
+      // #region agent log
+      fetch('http://127.0.0.1:7725/ingest/24b532b9-8624-4538-bfe3-0c7dd0936c97',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bbe3e7'},body:JSON.stringify({sessionId:'bbe3e7',runId:'pre-fix',hypothesisId:'H-HK1',location:'Terminal.js:handleKeyDown',message:'window keydown trigger',data:{code:e.code,key:e.key,location:e.location,visibility:document.visibilityState},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      triggerToggle('window-keydown');
     };
 
     const handleKeyUp = (e) => {
@@ -1201,8 +1212,11 @@ const Terminal = ({ blobConfig = {} }) => {
           try {
             const data = JSON.parse(event.data);
             if (data && data.type === 'hotkey' && data.key === 'AltRight') {
+              // #region agent log
+              fetch('http://127.0.0.1:7725/ingest/24b532b9-8624-4538-bfe3-0c7dd0936c97',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bbe3e7'},body:JSON.stringify({sessionId:'bbe3e7',runId:'pre-fix',hypothesisId:'H-HK4',location:'Terminal.js:EventSource.onmessage',message:'SSE hotkey received',data:{state:data.state,visibility:document.visibilityState,hidden:document.hidden},timestamp:Date.now()})}).catch(()=>{});
+              // #endregion
               if (data.state === 'down') {
-                triggerToggle();
+                triggerToggle('sse-hotkey');
               }
             }
           } catch (_) {}
@@ -1223,6 +1237,9 @@ const Terminal = ({ blobConfig = {} }) => {
     connectGlobalHotkey();
 
     return () => {
+      // #region agent log
+      fetch('http://127.0.0.1:7725/ingest/24b532b9-8624-4538-bfe3-0c7dd0936c97',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bbe3e7'},body:JSON.stringify({sessionId:'bbe3e7',runId:'pre-fix',hypothesisId:'H-HK3',location:'Terminal.js:hotkeyEffectCleanup',message:'Terminal hotkey effect unmounted',data:{visibility:document.visibilityState},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       if (reconnectTimeout) clearTimeout(reconnectTimeout);

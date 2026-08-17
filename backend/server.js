@@ -32,6 +32,12 @@ app.get('/api/hotkey-stream', (req, res) => {
   globalHotkey.registerSseClient(req, res);
 });
 
+app.post('/api/test-hotkey', (req, res) => {
+  const { key = 'AltRight', state = 'down' } = req.body || {};
+  globalHotkey.broadcastHotkey({ key, state });
+  res.json({ success: true, broadcasted: { key, state } });
+});
+
 tts.registerTtsRoute(app);
 
 function requestSessionId(req) {

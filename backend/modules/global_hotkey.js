@@ -9,6 +9,12 @@ const path = require('path');
 const fs = require('fs');
 const EventEmitter = require('events');
 
+// #region agent log
+function dbgHotkey(hypothesisId, location, message, data) {
+  fetch('http://127.0.0.1:7725/ingest/24b532b9-8624-4538-bfe3-0c7dd0936c97', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'bbe3e7' }, body: JSON.stringify({ sessionId: 'bbe3e7', runId: 'pre-fix', hypothesisId, location, message, data, timestamp: Date.now() }) }).catch(() => {});
+}
+// #endregion
+
 class GlobalHotkeyManager extends EventEmitter {
   constructor() {
     super();
@@ -41,6 +47,13 @@ class GlobalHotkeyManager extends EventEmitter {
         const isF9 = e.keycode === UiohookKey.F9;
         const isRightCtrl = e.keycode === UiohookKey.CtrlRight;
         const isAltK = this.isAltDown && (e.keycode === UiohookKey.K || e.keycode === 37);
+        const isAltRelated = isRightAlt || e.keycode === UiohookKey.Alt || e.altKey || e.ctrlKey || e.keycode >= 3600;
+
+        if (isAltRelated || isF9 || isRightCtrl || isAltK) {
+          // #region agent log
+          dbgHotkey(isRightAlt ? 'H-HK2' : 'H-HK2', 'global_hotkey.js:keydown', 'native keydown candidate', { keycode: e.keycode, altKey: !!e.altKey, ctrlKey: !!e.ctrlKey, isRightAlt, isF9, isRightCtrl, isAltK, altRightConst: UiohookKey.AltRight, sseClients: this.sseClients.size });
+          // #endregion
+        }
 
         if (isRightAlt || isF9 || isRightCtrl || isAltK) {
           const now = Date.now();
@@ -70,8 +83,14 @@ class GlobalHotkeyManager extends EventEmitter {
       uIOhook.start();
       this.isHookRunning = true;
       console.log('[GLOBAL-HOTKEY] Native in-process uiohook-napi hook active (Right Alt, Alt+K, F9, Right Ctrl).');
+      // #region agent log
+      dbgHotkey('H-HK1', 'global_hotkey.js:startWatcher', 'native hook started', { alt: UiohookKey.Alt, altRight: UiohookKey.AltRight, ctrlRight: UiohookKey.CtrlRight, f9: UiohookKey.F9, hookRunning: true });
+      // #endregion
     } catch (err) {
       console.error('[GLOBAL-HOTKEY ERROR] Failed to start native hook:', err.message);
+      // #region agent log
+      dbgHotkey('H-HK1', 'global_hotkey.js:startWatcher', 'native hook FAILED', { error: String(err && err.message), hookRunning: false });
+      // #endregion
     }
   }
 
@@ -95,6 +114,9 @@ class GlobalHotkeyManager extends EventEmitter {
     const eventData = JSON.stringify({ type: 'hotkey', ...payload, timestamp: Date.now() });
     this.emit('hotkey', payload);
     console.log(`[GLOBAL-HOTKEY] Key ${payload.key} (${payload.state}) -> sent to ${this.sseClients.size} frontend client(s)`);
+    // #region agent log
+    dbgHotkey('H-HK4', 'global_hotkey.js:broadcastHotkey', 'broadcasting hotkey to SSE clients', { key: payload.key, state: payload.state, sseClients: this.sseClients.size });
+    // #endregion
 
     for (const client of this.sseClients) {
       try {
@@ -119,6 +141,9 @@ class GlobalHotkeyManager extends EventEmitter {
     res.write(`data: ${JSON.stringify({ type: 'connected', service: 'global_hotkey', hotkey: 'AltRight' })}\n\n`);
     this.sseClients.add(res);
     console.log(`[GLOBAL-HOTKEY] Frontend connected to hotkey stream. Total active listeners: ${this.sseClients.size}`);
+    // #region agent log
+    dbgHotkey('H-HK3', 'global_hotkey.js:registerSseClient', 'SSE client connected', { sseClients: this.sseClients.size });
+    // #endregion
 
     const heartbeat = setInterval(() => {
       if (!res.writableEnded) {
